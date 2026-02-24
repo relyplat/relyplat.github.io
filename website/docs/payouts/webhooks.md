@@ -37,7 +37,7 @@ Fired when a batch changes state (e.g., `INITIALIZED` → `PROCESSING`, `PROCESS
 
 ## Webhook Payload Schema
 
-For detailed webhook payload schemas and examples, see the [API Reference](/relyplat#tag/Webhooks).
+For detailed webhook payload schemas and examples, see the [API Reference](/api#tag/Webhooks).
 
 ## Best Practices
 

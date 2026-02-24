@@ -60,7 +60,7 @@ const config: Config = {
         specs: [
           {
             spec: 'openapi/relyplat/index.openapi.yaml',
-            route: '/relyplat',
+            route: '/api',
           },
         ],
         theme: {
@@ -90,7 +90,7 @@ const config: Config = {
           label: 'Documentation',
         },
         {
-          to: '/relyplat',
+          to: '/api',
           label: 'API Reference',
           position: 'left',
         },
@@ -108,7 +108,7 @@ const config: Config = {
             },
             {
               label: 'API Reference',
-              to: '/relyplat',
+              to: '/api',
             },
           ],
         },

@@ -24,7 +24,7 @@ function HomepageHeader() {
           </Link>
           <Link
             className="button button--primary button--lg"
-            to="/relyplat"
+            to="/api"
             style={{marginLeft: '1rem'}}>
             API Reference
           </Link>

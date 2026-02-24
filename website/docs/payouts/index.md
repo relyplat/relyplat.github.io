@@ -55,7 +55,7 @@ sequenceDiagram
 
 ## API Endpoints
 
-For detailed API endpoint documentation including request/response schemas, parameters, and examples, see the [API Reference](/relyplat):
+For detailed API endpoint documentation including request/response schemas, parameters, and examples, see the [API Reference](/api):
 
 - **Payouts**: Create and retrieve individual payouts
 - **Batches**: Create, manage, and execute batch payouts (up to 10,000 payouts per batch)
@@ -63,7 +63,7 @@ For detailed API endpoint documentation including request/response schemas, para
 
 ## Next Steps
 
-- See the [API Reference](/relyplat) for detailed endpoint documentation
+- See the [API Reference](/api) for detailed endpoint documentation
 - Learn about [Webhooks](./webhooks) for real-time status updates
 - Review [Status Lifecycle](../reference/status-lifecycle) for state transitions
 

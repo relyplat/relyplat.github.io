@@ -118,7 +118,7 @@ The partner can retrieve a payee at any time via  `GET /v1/payees/{payeeId}`
 
 ## API Endpoints
 
-See the [API Reference](/relyplat) for detailed endpoint documentation:
+See the [API Reference](/api) for detailed endpoint documentation:
 
 - `POST /v1/registration-sessions` - Create a registration session
 - `GET /v1/payees?external_user_id={id}` - Retrieve a payee by External User ID
