@@ -1,0 +1,1451 @@
+openapi: 3.0.3
+info:
+  title: Remitly Platform API
+  version: 1.0.0
+  description: |
+    The Remitly Platform API enables partners to programmatically manage payee registration,
+    payouts, batches, and settlement reports.
+
+    **Base URL:** `https://api.remitly.com`
+
+    **Current Version:** `v1`
+
+    For detailed documentation, authentication guides, and examples, visit the [Documentation](/docs/getting-started).
+
+servers:
+  - url: https://api.remitly.com
+    description: Production
+
+tags:
+  - name: Registration Sessions
+    description: Create registration sessions for payee onboarding
+
+  - name: Payees
+    description: Retrieve payee information
+
+  - name: Payouts
+    description: Create and manage individual payouts
+
+  - name: Batches
+    description: Create and manage batch payouts (up to 10,000 payouts per batch)
+
+  - name: Reports
+    description: Generate and retrieve settlement reports
+
+
+
+security:
+  - RemitlySignature: []
+
+paths:
+  /v1/registration-sessions:
+    post:
+      tags:
+        - Registration Sessions
+      summary: Create a registration session
+      operationId: createRegistrationSession
+      description: |
+        Creates a registration session and returns a time-limited, single-use URL that allows a partner payee to initiate and complete onboarding.
+
+        ## Notes
+
+        - The `registration_link` contains a cryptographically random, single use token with a maximum lifetime of 15 minutes
+        - The token is:
+          - Bound to the provided `external_user_id`
+          - Invalidated upon first successful onboarding completion
+          - Automatically expired after 15 minutes if unused
+        - After successful completion, the token becomes permanently invalid and cannot be reused
+        - If the token expires or onboarding is completed, the partner must generate a new registration session to restart the flow
+        - The `registration_link` must be opened in a new tab or browser window (iframe embedding is not supported)
+        - Remitly will return the state value unchanged as a query parameter to the provided `redirect_url` upon successful completion
+        - The locale determines the language of the registration page. If not provided or supported, it defaults to `en`
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistrationSessionRequest'
+            example:
+              external_user_id: "externalUser123"
+              state: "abc123state"
+              redirect_url: "https://partner.com/callback"
+              locale: "en-US"
+              payee:
+                type: "individual"
+                individual:
+                  personal_information:
+                    first_name: "John"
+                    middle_name: "Joe"
+                    last_name: "Smith"
+                    second_last_name: "Doe"
+                    date_of_birth: "1980-01-01"
+                  address:
+                    line_1: "123 Test Street"
+                    line_2: "Apt 300"
+                    postal_code: "00000"
+                    city: "Seattle"
+                    subdivision: "WA"
+                    country: "USA"
+                  phone: "+12225550123"
+                  email: "john.smith@example.com"
+      responses:
+        '201':
+          description: Registration session created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationSessionResponse'
+              example:
+                registration_link: "https://www.remitly.com/partners/registration?lang=en-US&token=324f6a5..."
+                expires_at: "2026-02-20T18:00:00Z"
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/payees:
+    get:
+      tags:
+        - Payee Registration
+      summary: Retrieve a payee by External User ID
+      operationId: getPayeeByExternalUserId
+      description: |
+        Retrieves the Payee associated with the specified `external_user_id`.
+      parameters:
+        - name: external_user_id
+          in: query
+          required: true
+          description: Unique identifier of the payee on the partner's platform
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Payee retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payee'
+              example:
+                payee_id: "payee123"
+                external_user_id: "externalUser123"
+                status: "pending"
+                type: "individual"
+                individual:
+                  personal_information:
+                    first_name: "John"
+                    middle_name: "Joe"
+                    last_name: "Smith"
+                    second_last_name: "Doe"
+                    date_of_birth: "1980-01-01"
+                  address:
+                    line_1: "123 Test Street"
+                    line_2: "Apt 300"
+                    postal_code: "00000"
+                    city: "Seattle"
+                    subdivision: "WA"
+                    country: "USA"
+                  phone: "+12225550123"
+                  email: "john.smith@example.com"
+        '404':
+          description: The specified payee given a `external_user_id` does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/payees/{payeeId}:
+    get:
+      tags:
+        - Payee Registration
+      summary: Retrieve a payee
+      operationId: getPayeeById
+      description: |
+        Retrieves the Payee resource identified by the specified `payee_id`.
+      parameters:
+        - name: payeeId
+          in: path
+          required: true
+          description: Unique Remitly identifier for the payee
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Payee retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payee'
+        '404':
+          description: The specified `payee_id` does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/payouts:
+    post:
+      tags:
+        - Payouts
+      summary: Create a payout
+      operationId: createPayout
+      description: |
+        Creates a standalone payout outside of a batch.
+
+        The payout starts in `PENDING` status and will be processed asynchronously.
+        You will receive a `payout.status_updated` webhook when the payout status changes.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePayoutRequest'
+            example:
+              external_payout_id: "external_payout_123"
+              payee_id: "payee123"
+              amount: "250.00"
+              currency: "USD"
+              metadata:
+                invoice_id: "INV-2026-001"
+      responses:
+        '201':
+          description: Payout created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payout'
+              example:
+                id: "pay_standalone_001"
+                external_payout_id: "external_payout_123"
+                payee_id: "payee123"
+                status: "PENDING"
+                amount: "250.00"
+                currency: "USD"
+                metadata:
+                  invoice_id: "INV-2026-001"
+                created_at: "2026-02-23T10:00:00Z"
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/payouts/{payout_id}:
+    get:
+      tags:
+        - Payouts
+      summary: Get payout details
+      operationId: getPayoutById
+      description: |
+        Retrieves the details of a specific payout by its ID.
+      parameters:
+        - name: payout_id
+          in: path
+          required: true
+          description: Unique Remitly identifier for the payout
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Payout retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payout'
+              example:
+                id: "pay_alpha"
+                external_payout_id: "external_payout_123"
+                payee_id: "payee123"
+                status: "SUCCESSFUL"
+                amount: "100.00"
+                currency: "USD"
+                metadata:
+                  bonus_id: "B-99"
+                created_at: "2024-10-01T12:05:00Z"
+        '404':
+          description: Payout not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/batches:
+    post:
+      tags:
+        - Batches
+      summary: Create a batch
+      operationId: createBatch
+      description: |
+        Creates a new batch container for grouping payouts.
+
+        The batch is created in `INITIALIZED` status. You can add payouts to the batch
+        using `POST /v1/batches/{batch_id}/payouts` and then execute it using
+        `PATCH /v1/batches/{batch_id}` with `status: PROCESSING`.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBatchRequest'
+            example:
+              external_batch_id: "external_batch_123"
+              total_amount: "50000.00"
+              currency: "USD"
+              metadata:
+                region: "North_America"
+                dept: "Engineering"
+      responses:
+        '201':
+          description: Batch created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Batch'
+              example:
+                id: "bat_9921"
+                external_batch_id: "external_batch_123"
+                status: "INITIALIZED"
+                total_amount: "50000.00"
+                currency: "USD"
+                metadata:
+                  region: "North_America"
+                  dept: "Engineering"
+                created_at: "2024-10-01T12:00:00Z"
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/batches/{batch_id}:
+    get:
+      tags:
+        - Batches
+      summary: Get batch summary
+      operationId: getBatchById
+      description: |
+        Retrieves the summary information for a specific batch.
+      parameters:
+        - name: batch_id
+          in: path
+          required: true
+          description: Unique Remitly identifier for the batch
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Batch retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Batch'
+              example:
+                id: "bat_9921"
+                external_batch_id: "external_batch_123"
+                status: "COMPLETED"
+                total_amount: "50000.00"
+                total_transferred_amount: "50000.00"
+                currency: "USD"
+                metadata:
+                  region: "North_America"
+                created_at: "2024-10-01T12:00:00Z"
+        '404':
+          description: Batch not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    patch:
+      tags:
+        - Batches
+      summary: Update batch status (Execute/Cancel)
+      operationId: updateBatchStatus
+      description: |
+        Updates the status of a batch to execute or cancel it.
+
+        ## Valid Status Transitions
+
+        | Target Status | Allowed When Current Status Is | Description |
+        |---------------|--------------------------------|-------------|
+        | `PROCESSING` | `INITIALIZED` | Start executing the batch. All payouts will begin processing. |
+        | `CANCEL_REQUESTED` | `INITIALIZED` | Cancel before execution. All payouts will be cancelled. |
+        | `CANCEL_REQUESTED` | `PROCESSING` | Cancel during execution. Best effort to cancel remaining payouts. |
+
+        ## Cancellation Behavior
+
+        - If batch processing has **not yet started** (status is `INITIALIZED`): All payouts in the batch will be cancelled.
+        - If batch processing has **already started** (status is `PROCESSING`): Payouts that have already been processed will remain in their current state. We will make a best effort to cancel payouts that have not yet been processed.
+      parameters:
+        - name: batch_id
+          in: path
+          required: true
+          description: Unique Remitly identifier for the batch
+          schema:
+            type: string
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBatchStatusRequest'
+            example:
+              status: "PROCESSING"
+      responses:
+        '200':
+          description: Batch status updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchStatusResponse'
+              example:
+                id: "bat_9921"
+                status: "PROCESSING"
+        '400':
+          description: Invalid status transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Batch not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/batches/{batch_id}/payouts:
+    post:
+      tags:
+        - Batches
+      summary: Add payouts to batch
+      operationId: addPayoutsToBatch
+      description: |
+        Adds one or more payouts to an existing batch.
+
+        - The batch must be in `INITIALIZED` status
+        - Maximum of 500 payouts can be added per request
+        - A batch can contain up to 10,000 payouts total
+      parameters:
+        - name: batch_id
+          in: path
+          required: true
+          description: Unique Remitly identifier for the batch
+          schema:
+            type: string
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddPayoutsRequest'
+            example:
+              payouts:
+                - external_payout_id: "external_payout_123"
+                  payee_id: "payee123"
+                  amount: "1200.00"
+                  currency: "USD"
+                  metadata:
+                    bonus_id: "B-99"
+                - external_payout_id: "external_payout_124"
+                  payee_id: "payee124"
+                  amount: "800.00"
+                  currency: "USD"
+      responses:
+        '201':
+          description: Payouts added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddPayoutsResponse'
+              example:
+                payouts:
+                  - id: "pay_alpha"
+                    external_payout_id: "external_payout_123"
+                    payee_id: "payee123"
+                    status: "PENDING"
+                    amount: "1200.00"
+                    currency: "USD"
+                  - id: "pay_beta"
+                    external_payout_id: "external_payout_124"
+                    payee_id: "payee124"
+                    status: "PENDING"
+                    amount: "800.00"
+                    currency: "USD"
+        '400':
+          description: Invalid request or batch not editable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Batch not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    get:
+      tags:
+        - Batches
+      summary: List payouts in batch
+      operationId: listPayoutsInBatch
+      description: |
+        Retrieves a paginated list of payouts within a specific batch.
+
+        Use cursor-based pagination with `limit` and `next_cursor` parameters.
+      parameters:
+        - name: batch_id
+          in: path
+          required: true
+          description: Unique Remitly identifier for the batch
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of payouts to return (default 20, max 100)
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: cursor
+          in: query
+          required: false
+          description: Pagination cursor from a previous response
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Payouts retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListPayoutsResponse'
+              example:
+                payouts:
+                  - id: "pay_alpha"
+                    external_payout_id: "external_payout_123"
+                    payee_id: "payee123"
+                    status: "SUCCESSFUL"
+                    amount: "1200.00"
+                    currency: "USD"
+                    metadata:
+                      bonus_id: "B-99"
+                    created_at: "2024-10-01T12:05:00Z"
+                  - id: "pay_beta"
+                    external_payout_id: "external_payout_124"
+                    payee_id: "payee124"
+                    status: "SUCCESSFUL"
+                    amount: "800.00"
+                    currency: "USD"
+                    created_at: "2024-10-01T12:05:01Z"
+                next_cursor: "eyJpZCI6InBheV9iZXRhIn0="
+        '404':
+          description: Batch not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/reports:
+    post:
+      tags:
+        - Reports
+      summary: Create a report
+      operationId: createReport
+      description: |
+        Creates a new settlement report for the specified date range.
+
+        Currently, only **settlement** reports are supported. Reports are generated
+        asynchronously. Poll the `GET /v1/reports/{report_id}` endpoint to check status.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReportRequest'
+            example:
+              type: "settlement"
+              start_date: "2024-10-01"
+              end_date: "2024-10-31"
+      responses:
+        '201':
+          description: Report creation initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Report'
+              example:
+                id: "rpt_55291"
+                type: "settlement"
+                status: "PENDING"
+                start_date: "2024-10-01"
+                end_date: "2024-10-31"
+                created_at: "2024-11-01T10:00:00Z"
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/reports/{report_id}:
+    get:
+      tags:
+        - Reports
+      summary: Check report status
+      operationId: getReportById
+      description: |
+        Retrieves the status and download URL of a report.
+
+        When the report status is `COMPLETED`, the `download_url` field will contain
+        a pre-signed URL to download the report file.
+      parameters:
+        - name: report_id
+          in: path
+          required: true
+          description: Unique identifier for the report
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Report retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Report'
+              example:
+                id: "rpt_55291"
+                type: "settlement"
+                status: "COMPLETED"
+                start_date: "2024-10-01"
+                end_date: "2024-10-31"
+                download_url: "https://storage.remitly.com/reports/rpt_55291.csv?signature=..."
+                created_at: "2024-11-01T10:00:00Z"
+        '404':
+          description: Report not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+x-webhooks:
+  payeeCreated:
+    post:
+      tags:
+        - Webhooks
+      summary: payee.created
+      operationId: webhookPayeeCreated
+      description: |
+        Fired when a payee completes initial registration and a Payee resource is created.
+
+        The payee will be in `pending` status at this point, awaiting KYC/KYB completion.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PayeeCreatedEvent'
+            example:
+              id: "evt_101"
+              type: "payee.created"
+              timestamp: "2024-10-01T14:30:00Z"
+              data:
+                payee_id: "payee123"
+                external_user_id: "externalUser123"
+                status: "pending"
+                individual:
+                  personal_information:
+                    first_name: "John"
+                    last_name: "Smith"
+      responses:
+        '200':
+          description: Webhook received successfully
+
+  payeeStatusUpdated:
+    post:
+      tags:
+        - Webhooks
+      summary: payee.status_updated
+      operationId: webhookPayeeStatusUpdated
+      description: |
+        Fired when a payee's status changes (e.g., from `pending` to `active` or `restricted`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PayeeStatusUpdatedEvent'
+            example:
+              id: "evt_102"
+              type: "payee.status_updated"
+              timestamp: "2024-10-02T10:15:00Z"
+              data:
+                payee_id: "payee123"
+                external_user_id: "externalUser123"
+                previous_status: "pending"
+                status: "active"
+      responses:
+        '200':
+          description: Webhook received successfully
+
+  payoutStatusUpdated:
+    post:
+      tags:
+        - Webhooks
+      summary: payout.status_updated
+      operationId: webhookPayoutStatusUpdated
+      description: |
+        Fired when a payout's status changes (e.g., from `PENDING` to `SUCCESSFUL` or `FAILED`).
+
+        This webhook is sent for both standalone payouts and batch payouts.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PayoutStatusUpdatedEvent'
+            example:
+              id: "evt_201"
+              type: "payout.status_updated"
+              timestamp: "2024-10-01T12:30:00Z"
+              data:
+                payout_id: "pay_alpha"
+                external_payout_id: "external_payout_123"
+                batch_id: "bat_9921"
+                payee_id: "payee123"
+                previous_status: "PENDING"
+                status: "SUCCESSFUL"
+                amount: "1200.00"
+                currency: "USD"
+      responses:
+        '200':
+          description: Webhook received successfully
+
+  batchStatusUpdated:
+    post:
+      tags:
+        - Webhooks
+      summary: batch.status_updated
+      operationId: webhookBatchStatusUpdated
+      description: |
+        Fired when a batch's status changes (e.g., from `PROCESSING` to `COMPLETED`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchStatusUpdatedEvent'
+            example:
+              id: "evt_301"
+              type: "batch.status_updated"
+              timestamp: "2024-10-01T14:00:00Z"
+              data:
+                batch_id: "bat_9921"
+                external_batch_id: "external_batch_123"
+                previous_status: "PROCESSING"
+                status: "COMPLETED"
+                total_amount: "50000.00"
+                total_transferred_amount: "50000.00"
+      responses:
+        '200':
+          description: Webhook received successfully
+
+components:
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: |
+        A unique UUID v4 key for idempotent requests. Idempotency keys are stored for 24 hours.
+        If you retry a request with the same key, you'll receive the cached response.
+      schema:
+        type: string
+        format: uuid
+        example: "123e4567-e89b-12d3-a456-426614174000"
+
+  securitySchemes:
+    RemitlySignature:
+      type: apiKey
+      in: header
+      name: Remitly-Signature
+      description: |
+        ECDSA P-256 with SHA-256 signature for request authentication.
+
+        The signature is computed over the concatenation of:
+        - HTTP method (uppercase)
+        - Request path (including query string)
+        - Request body (or empty string)
+        - Timestamp (ISO-8601 UTC)
+
+        Headers required:
+        - `Remitly-Signature`: Base64-encoded signature
+        - `Remitly-Timestamp`: ISO-8601 UTC timestamp
+        - `Remitly-Key-Id`: Your public key identifier
+
+  schemas:
+    # Registration Session Schemas
+    RegistrationSessionRequest:
+      type: object
+      required:
+        - external_user_id
+        - redirect_url
+        - payee
+      properties:
+        external_user_id:
+          type: string
+          description: Your unique identifier for this payee
+        state:
+          type: string
+          description: Opaque value returned unchanged in the redirect URL
+        redirect_url:
+          type: string
+          format: uri
+          description: URL to redirect the user after registration completes
+        locale:
+          type: string
+          description: Locale for the registration page (e.g., "en-US")
+          default: "en"
+        payee:
+          $ref: '#/components/schemas/PayeeInput'
+
+    RegistrationSessionResponse:
+      type: object
+      properties:
+        registration_link:
+          type: string
+          format: uri
+          description: Time-limited URL for the payee to complete registration
+        expires_at:
+          type: string
+          format: date-time
+          description: When the registration link expires (ISO-8601 UTC)
+
+    # Payee Schemas
+    PayeeInput:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum: [individual, business]
+          description: Type of payee
+        individual:
+          $ref: '#/components/schemas/Individual'
+        business:
+          $ref: '#/components/schemas/Business'
+
+    Payee:
+      type: object
+      properties:
+        payee_id:
+          type: string
+          description: Unique Remitly identifier for the payee
+        external_user_id:
+          type: string
+          description: Your unique identifier for this payee
+        status:
+          type: string
+          enum: [pending, active, restricted]
+          description: Current status of the payee
+        type:
+          type: string
+          enum: [individual, business]
+          description: Type of payee
+        individual:
+          $ref: '#/components/schemas/Individual'
+        business:
+          $ref: '#/components/schemas/Business'
+
+    Individual:
+      type: object
+      properties:
+        personal_information:
+          $ref: '#/components/schemas/PersonalInformation'
+        address:
+          $ref: '#/components/schemas/Address'
+        phone:
+          type: string
+          description: Phone number in E.164 format
+        email:
+          type: string
+          format: email
+          description: Email address
+
+    PersonalInformation:
+      type: object
+      properties:
+        first_name:
+          type: string
+          description: First name
+        middle_name:
+          type: string
+          description: Middle name (optional)
+        last_name:
+          type: string
+          description: Last name
+        second_last_name:
+          type: string
+          description: Second last name (optional, common in Hispanic naming conventions)
+        date_of_birth:
+          type: string
+          format: date
+          description: Date of birth (YYYY-MM-DD)
+
+    Address:
+      type: object
+      properties:
+        line_1:
+          type: string
+          description: Street address line 1
+        line_2:
+          type: string
+          description: Street address line 2 (optional)
+        postal_code:
+          type: string
+          description: Postal/ZIP code
+        city:
+          type: string
+          description: City name
+        subdivision:
+          type: string
+          description: State/province code (e.g., "WA" for Washington)
+        country:
+          type: string
+          description: Country code (e.g., "USA")
+
+    Business:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Legal business name
+        doing_business_as:
+          type: string
+          description: DBA or trade name (optional)
+        address:
+          $ref: '#/components/schemas/Address'
+        phone:
+          type: string
+          description: Business phone number in E.164 format
+        email:
+          type: string
+          format: email
+          description: Business email address
+        partners:
+          type: array
+          items:
+            $ref: '#/components/schemas/Partner'
+          description: Business partners/owners with 25%+ ownership
+        org_identifiers:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrgIdentifier'
+          description: Business identification numbers
+
+    Partner:
+      type: object
+      properties:
+        personal_information:
+          $ref: '#/components/schemas/PersonalInformation'
+        address:
+          $ref: '#/components/schemas/Address'
+        phone:
+          type: string
+          description: Partner phone number
+        email:
+          type: string
+          format: email
+          description: Partner email address
+        ownership_percentage:
+          type: number
+          description: Percentage of business ownership
+
+    OrgIdentifier:
+      type: object
+      properties:
+        type:
+          type: string
+          description: Identifier type (e.g., "EIN", "SSN")
+        value:
+          type: string
+          description: Identifier value
+
+    # Payout Schemas
+    CreatePayoutRequest:
+      type: object
+      required:
+        - external_payout_id
+        - payee_id
+        - amount
+        - currency
+      properties:
+        external_payout_id:
+          type: string
+          description: Your unique identifier for this payout
+        payee_id:
+          type: string
+          description: Remitly payee ID of the recipient
+        amount:
+          type: string
+          description: Amount in decimal base currency units (e.g., "10.00" = $10.00 USD)
+        currency:
+          type: string
+          description: ISO currency code (currently only "USD")
+          enum: [USD]
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+
+    Payout:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique Remitly identifier for the payout
+        external_payout_id:
+          type: string
+          description: Your unique identifier for this payout
+        payee_id:
+          type: string
+          description: Remitly payee ID of the recipient
+        status:
+          type: string
+          enum: [PENDING, VALIDATING, SUBMITTED, SUCCESSFUL, FAILED, CANCELLED]
+          description: Current status of the payout
+        amount:
+          type: string
+          description: Amount in decimal base currency units (e.g., "10.00" = $10.00 USD)
+        currency:
+          type: string
+          description: ISO currency code
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+        error:
+          $ref: '#/components/schemas/PayoutError'
+        created_at:
+          type: string
+          format: date-time
+          description: When the payout was created (ISO-8601 UTC)
+
+    PayoutError:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Machine-readable error code
+        message:
+          type: string
+          description: Human-readable error description
+
+    # Batch Schemas
+    CreateBatchRequest:
+      type: object
+      required:
+        - external_batch_id
+        - total_amount
+        - currency
+      properties:
+        external_batch_id:
+          type: string
+          description: Your unique identifier for this batch
+        total_amount:
+          type: string
+          description: Expected total amount in decimal base currency units (e.g., "10.00" = $10.00 USD)
+        currency:
+          type: string
+          description: ISO currency code (currently only "USD")
+          enum: [USD]
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+
+    Batch:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique Remitly identifier for the batch
+        external_batch_id:
+          type: string
+          description: Your unique identifier for this batch
+        status:
+          type: string
+          enum: [INITIALIZED, PROCESSING, CANCEL_REQUESTED, CANCELLED, COMPLETED, COMPLETED_WITH_ERRORS, FAILED]
+          description: Current status of the batch
+        total_amount:
+          type: string
+          description: Expected total amount in decimal base currency units
+        total_transferred_amount:
+          type: string
+          description: Sum of successful payouts in decimal base currency units
+        currency:
+          type: string
+          description: ISO currency code
+        metadata:
+          $ref: '#/components/schemas/Metadata'
+        created_at:
+          type: string
+          format: date-time
+          description: When the batch was created (ISO-8601 UTC)
+
+    UpdateBatchStatusRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [PROCESSING, CANCEL_REQUESTED]
+          description: Target status for the batch
+
+    BatchStatusResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique Remitly identifier for the batch
+        status:
+          type: string
+          description: New status of the batch
+
+    AddPayoutsRequest:
+      type: object
+      required:
+        - payouts
+      properties:
+        payouts:
+          type: array
+          maxItems: 500
+          items:
+            $ref: '#/components/schemas/CreatePayoutRequest'
+          description: Array of payouts to add (max 500 per request)
+
+    AddPayoutsResponse:
+      type: object
+      properties:
+        payouts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Payout'
+          description: Array of created payouts
+
+    ListPayoutsResponse:
+      type: object
+      properties:
+        payouts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Payout'
+          description: Array of payouts in the batch
+        next_cursor:
+          type: string
+          description: Cursor for the next page of results (null if no more pages)
+
+    # Report Schemas
+    CreateReportRequest:
+      type: object
+      required:
+        - type
+        - start_date
+        - end_date
+      properties:
+        type:
+          type: string
+          enum: [settlement]
+          description: Type of report (currently only "settlement" is supported)
+        start_date:
+          type: string
+          format: date
+          description: Start date for the report (YYYY-MM-DD)
+        end_date:
+          type: string
+          format: date
+          description: End date for the report (YYYY-MM-DD)
+
+    Report:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the report
+        type:
+          type: string
+          description: Type of report
+        status:
+          type: string
+          enum: [PENDING, PROCESSING, COMPLETED, FAILED]
+          description: Current status of the report
+        start_date:
+          type: string
+          format: date
+          description: Start date for the report
+        end_date:
+          type: string
+          format: date
+          description: End date for the report
+        download_url:
+          type: string
+          format: uri
+          description: Pre-signed URL to download the report (available when status is COMPLETED)
+        created_at:
+          type: string
+          format: date-time
+          description: When the report was requested (ISO-8601 UTC)
+
+    # Webhook Event Schemas
+    PayeeCreatedEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique event identifier
+        type:
+          type: string
+          enum: [payee.created]
+        timestamp:
+          type: string
+          format: date-time
+          description: When the event occurred (ISO-8601 UTC)
+        data:
+          type: object
+          properties:
+            payee_id:
+              type: string
+            external_user_id:
+              type: string
+            status:
+              type: string
+            individual:
+              $ref: '#/components/schemas/Individual'
+            business:
+              $ref: '#/components/schemas/Business'
+
+    PayeeStatusUpdatedEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique event identifier
+        type:
+          type: string
+          enum: [payee.status_updated]
+        timestamp:
+          type: string
+          format: date-time
+        data:
+          type: object
+          properties:
+            payee_id:
+              type: string
+            external_user_id:
+              type: string
+            previous_status:
+              type: string
+            status:
+              type: string
+
+    PayoutStatusUpdatedEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique event identifier
+        type:
+          type: string
+          enum: [payout.status_updated]
+        timestamp:
+          type: string
+          format: date-time
+        data:
+          type: object
+          properties:
+            payout_id:
+              type: string
+            external_payout_id:
+              type: string
+            batch_id:
+              type: string
+              description: Present only for batch payouts
+            payee_id:
+              type: string
+            previous_status:
+              type: string
+            status:
+              type: string
+            amount:
+              type: string
+            currency:
+              type: string
+
+    BatchStatusUpdatedEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique event identifier
+        type:
+          type: string
+          enum: [batch.status_updated]
+        timestamp:
+          type: string
+          format: date-time
+        data:
+          type: object
+          properties:
+            batch_id:
+              type: string
+            external_batch_id:
+              type: string
+            previous_status:
+              type: string
+            status:
+              type: string
+            total_amount:
+              type: string
+            total_transferred_amount:
+              type: string
+
+    # Common Schemas
+    Error:
+      type: object
+      properties:
+        error_type:
+          type: string
+          description: Error category
+          enum:
+            - invalid_request_error
+            - authentication_error
+            - idempotency_error
+            - rate_limit_error
+            - api_error
+        error_code:
+          type: string
+          description: Machine-readable error code
+        message:
+          type: string
+          description: Human-readable error description
+
+    Metadata:
+      type: object
+      additionalProperties:
+        oneOf:
+          - type: string
+          - type: number
+          - type: boolean
+      description: |
+        Custom key-value pairs for additional context.
+        - Maximum 10 fields
+        - Maximum 255 characters per value
+        - Supports string, number, and boolean values only
+        - Arrays and nested objects are not supported
