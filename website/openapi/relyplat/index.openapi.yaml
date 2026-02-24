@@ -6,15 +6,9 @@ info:
     The Remitly Platform API enables partners to programmatically manage payee registration,
     payouts, batches, and settlement reports.
 
-    **Base URL:** `https://api.remitly.com`
-
     **Current Version:** `v1`
 
     For detailed documentation, authentication guides, and examples, visit the [Documentation](/docs/getting-started).
-
-servers:
-  - url: https://api.remitly.com
-    description: Production
 
 tags:
   - name: Registration Sessions
@@ -407,7 +401,7 @@ paths:
                 external_batch_id: "external_batch_123"
                 status: "COMPLETED"
                 total_amount: "50000.00"
-                total_transferred_amount: "50000.00"
+                total_completed_amount: "50000.00"
                 currency: "USD"
                 metadata:
                   region: "North_America"
@@ -857,7 +851,7 @@ x-webhooks:
                 previous_status: "PROCESSING"
                 status: "COMPLETED"
                 total_amount: "50000.00"
-                total_transferred_amount: "50000.00"
+                total_completed_amount: "50000.00"
       responses:
         '200':
           description: Webhook received successfully
@@ -1188,7 +1182,7 @@ components:
         total_amount:
           type: string
           description: Expected total amount in decimal base currency units
-        total_transferred_amount:
+        total_completed_amount:
           type: string
           description: Sum of successful payouts in decimal base currency units
         currency:
@@ -1420,7 +1414,7 @@ components:
               type: string
             total_amount:
               type: string
-            total_transferred_amount:
+            total_completed_amount:
               type: string
 
     # Common Schemas

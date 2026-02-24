@@ -15,7 +15,7 @@ A Batch is a high-level container used to group and manage up to 10,000 payout i
 | `external_batch_id` | `string` | `Your unique identifier for the batch, used for reconciliation.` | `external_batch_123` |
 | `status` | `string` | `The current state: INITIALIZED, PROCESSING, CANCEL_REQUESTED, CANCELLED, COMPLETED, COMPLETED_WITH_ERRORS, FAILED.` | `PROCESSING` |
 | `total_amount` | `string` | `The target sum of all payouts in decimal base currency units (e.g., "10.00" = $10.00 USD).` | `10500.25` |
-| `total_transferred_amount` | `string` | `The sum of payouts that have reached a SUCCESSFUL terminal state, in decimal base currency units.` | `8000.00` |
+| `total_completed_amount` | `string` | `The sum of payouts that have reached a terminal state, in decimal base currency units.` | `8000.00` |
 | `currency` | `string` | `ISO currency code (currently USD).` | `USD` |
 | `metadata` | `dictionary` | `Custom key-value pairs associated with the batch.` | `{"dept": "finance"}` |
 | `created_at` | `string` | `Timestamp when the batch was created (ISO-8601 UTC).` | `2024-10-01T12:00:00Z` |
