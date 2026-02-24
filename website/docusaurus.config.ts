@@ -53,7 +53,20 @@ const config: Config = {
         },
       } satisfies Preset.Options,
     ],
-    ['redocusaurus', {}],
+    [
+      'redocusaurus',
+      {
+        specs: [
+          {
+            spec: 'openapi/relyplat/index.openapi.yaml',
+            route: '/relyplat',
+          },
+        ],
+        theme: {
+          primaryColor: '#3578E5',
+        },
+      },
+    ],
   ],
 
   themeConfig: {
