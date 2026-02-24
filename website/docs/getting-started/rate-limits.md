@@ -14,21 +14,4 @@ Usage is limited to **100 requests per second (RPS)** per account. Exceeding thi
 - Use batch operations when possible to reduce the number of API calls
 - Monitor your usage to stay within limits
 
-## Response Headers
-
-When you approach or exceed the rate limit, the API will include the following headers in the response:
-
-- `X-RateLimit-Limit`: The maximum number of requests allowed per second
-- `X-RateLimit-Remaining`: The number of requests remaining in the current window
-- `X-RateLimit-Reset`: The time when the rate limit window resets (Unix timestamp)
-
-## Example 429 Response
-
-```json
-{
-  "error_type": "rate_limit_error",
-  "error_code": "rate_limit_exceeded",
-  "message": "Too many requests. Please retry after the indicated time."
-}
-```
 

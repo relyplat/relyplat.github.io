@@ -4,27 +4,77 @@
  * work well for content-centric websites.
  */
 
+/* Import Poppins font from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
 /* You can override the default Infima variables here. */
 :root {
-  --ifm-color-primary: #2e8555;
-  --ifm-color-primary-dark: #29784c;
-  --ifm-color-primary-darker: #277148;
-  --ifm-color-primary-darkest: #205d3b;
-  --ifm-color-primary-light: #33925d;
-  --ifm-color-primary-lighter: #359962;
-  --ifm-color-primary-lightest: #3cad6e;
+  /* Ocean blue primary color for buttons, links, etc. */
+  --ifm-color-primary: #0077B6;
+  --ifm-color-primary-dark: #006BA4;
+  --ifm-color-primary-darker: #00659B;
+  --ifm-color-primary-darkest: #00537F;
+  --ifm-color-primary-light: #0083C8;
+  --ifm-color-primary-lighter: #008FD9;
+  --ifm-color-primary-lightest: #00A3F5;
   --ifm-code-font-size: 95%;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
 }
 
 /* For readability concerns, you should choose a lighter palette in dark mode. */
 [data-theme='dark'] {
-  --ifm-color-primary: #25c2a0;
-  --ifm-color-primary-dark: #21af90;
-  --ifm-color-primary-darker: #1fa588;
-  --ifm-color-primary-darkest: #1a8870;
-  --ifm-color-primary-light: #29d5b0;
-  --ifm-color-primary-lighter: #32d8b4;
-  --ifm-color-primary-lightest: #4fddbf;
+  /* Bright cyan primary color for buttons, links, etc. */
+  --ifm-color-primary: #48CAE4;
+  --ifm-color-primary-dark: #32C3E0;
+  --ifm-color-primary-darker: #27BFDE;
+  --ifm-color-primary-darkest: #1AA8C7;
+  --ifm-color-primary-light: #5ED1E8;
+  --ifm-color-primary-lighter: #6AD5EA;
+  --ifm-color-primary-lightest: #8DE0F0;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
+
+/* Custom hero background colors (separate from primary color) */
+.hero--primary {
+  --ifm-hero-background-color: #E5F6F9;
+  --ifm-hero-text-color: #1a1a2e;
+}
+
+[data-theme='dark'] .hero--primary {
+  --ifm-hero-background-color: #0F4C5C;
+  --ifm-hero-text-color: #ffffff;
+}
+
+/* Poppins font for hero headings */
+.hero__title {
+  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 700;
+}
+
+/* More defined secondary button in light mode */
+.button--secondary {
+  --ifm-button-background-color: #ffffff;
+  --ifm-button-border-color: #0077B6;
+  color: #0077B6;
+  border: 2px solid #0077B6;
+}
+
+.button--secondary:hover {
+  --ifm-button-background-color: #0077B6;
+  color: #ffffff;
+  border-color: #0077B6;
+}
+
+/* Dark mode secondary button */
+[data-theme='dark'] .button--secondary {
+  --ifm-button-background-color: transparent;
+  --ifm-button-border-color: #48CAE4;
+  color: #48CAE4;
+  border: 2px solid #48CAE4;
+}
+
+[data-theme='dark'] .button--secondary:hover {
+  --ifm-button-background-color: #48CAE4;
+  color: #0F4C5C;
+  border-color: #48CAE4;
 }

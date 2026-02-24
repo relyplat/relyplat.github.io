@@ -7,12 +7,6 @@ title: Overview
 
 Welcome to the Remitly Platform API documentation. The Remitly Platform API enables partners to programmatically manage payee registration, payouts, batches, and settlement reports.
 
-## Base URL
-
-```
-https://api.remitly.com
-```
-
 ## API Version
 
 The current version is `v1`. All endpoints are prefixed with the version (e.g., `/v1/payouts`).
