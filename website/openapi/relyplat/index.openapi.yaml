@@ -918,60 +918,118 @@ components:
 
     Business:
       type: object
+      required:
+        - name
+        - address
+        - country_of_registration
+        - entity_type
       properties:
         name:
           type: string
-          description: Legal business name
-        doing_business_as:
+          description: Legal name of the organization
+        trade_name:
           type: string
-          description: DBA or trade name (optional)
+          description: Doing Business As (DBA) name
         address:
           $ref: '#/components/schemas/Address'
-        phone:
+        country_of_registration:
           type: string
-          description: Business phone number in E.164 format
-        email:
+          description: ISO-3166-1 alpha-3 country code
+        org_industry_classification:
+          $ref: '#/components/schemas/OrgIndustryClassification'
+        entity_type:
           type: string
-          format: email
-          description: Business email address
+          description: Legal entity type (e.g., corporation, partnership)
+        org_description:
+          $ref: '#/components/schemas/OrgDescription'
         partners:
           type: array
           items:
             $ref: '#/components/schemas/Partner'
-          description: Business partners/owners with 25%+ ownership
-        org_identifiers:
-          type: array
-          items:
-            $ref: '#/components/schemas/OrgIdentifier'
-          description: Business identification numbers
+          description: List of key personnel/partners
+        no_of_employees_range:
+          type: string
+          description: Range of total employees (e.g., 1-10, 11-50)
+        org_website_url:
+          type: string
+          description: Organization's official website
+        employee_description:
+          type: string
+          description: Description of employees
+        customer_description:
+          type: string
+          description: Description of the customer base
+        org_identifier:
+          $ref: '#/components/schemas/OrgIdentifier'
 
     Partner:
       type: object
       properties:
+        title:
+          type: string
+          description: Partner's title (e.g., CEO, Director)
+        countries_of_citizenship:
+          type: array
+          items:
+            type: string
+          description: ISO-3166-1 alpha-3 country codes
         personal_information:
           $ref: '#/components/schemas/PersonalInformation'
         address:
           $ref: '#/components/schemas/Address'
-        phone:
+        phone_number:
           type: string
-          description: Partner phone number
-        email:
-          type: string
-          format: email
-          description: Partner email address
+          description: E.164-formatted phone number
         ownership_percentage:
           type: number
-          description: Percentage of business ownership
+          description: Percentage of company ownership
+        type:
+          type: array
+          items:
+            type: string
+          description: Partner roles/types
 
     OrgIdentifier:
       type: object
       properties:
         type:
           type: string
-          description: Identifier type (e.g., "EIN", "SSN")
+          description: Type of identifier (e.g., EIN, VAT, LEI)
         value:
           type: string
-          description: Identifier value
+          description: The actual identifier number
+        country:
+          type: string
+          description: ISO-3166-1 alpha-3 country code of issue
+        jurisdiction:
+          type: object
+          description: Further jurisdictional details if needed
+
+    OrgIndustryClassification:
+      type: object
+      properties:
+        type:
+          type: string
+          description: Classification standard being used
+        value:
+          type: string
+          description: The classification code
+        label:
+          type: string
+          description: Human-readable label for the code
+
+    OrgDescription:
+      type: object
+      properties:
+        products_services_description:
+          type: string
+          description: Detailed description of products/services offered
+        organization_jurisdictions:
+          type: string
+          description: Jurisdictions where the organization operates
+        customer_description_other_value:
+          type: string
+          description: Free-text description of customers if needed
 
     # Payout Schemas
     CreatePayoutRequest:
