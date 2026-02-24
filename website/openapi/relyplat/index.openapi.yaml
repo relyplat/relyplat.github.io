@@ -122,7 +122,7 @@ paths:
   /v1/payees:
     get:
       tags:
-        - Payee Registration
+        - Payees
       summary: Retrieve a payee by External User ID
       operationId: getPayeeByExternalUserId
       description: |
@@ -178,7 +178,7 @@ paths:
   /v1/payees/{payeeId}:
     get:
       tags:
-        - Payee Registration
+        - Payees
       summary: Retrieve a payee
       operationId: getPayeeById
       description: |
@@ -587,12 +587,12 @@ paths:
         - name: limit
           in: query
           required: false
-          description: Maximum number of payouts to return (default 20, max 100)
+          description: Maximum number of payouts to return (default 100, max 1000)
           schema:
             type: integer
-            default: 20
-            maximum: 100
-        - name: cursor
+            default: 100
+            maximum: 1000
+        - name: next_cursor
           in: query
           required: false
           description: Pagination cursor from a previous response
@@ -660,6 +660,7 @@ paths:
               type: "settlement"
               start_date: "2024-10-01"
               end_date: "2024-10-31"
+              format: "csv"
       responses:
         '201':
           description: Report creation initiated
@@ -884,15 +885,16 @@ components:
         ECDSA P-256 with SHA-256 signature for request authentication.
 
         The signature is computed over the concatenation of:
-        - HTTP method (uppercase)
-        - Request path (including query string)
-        - Request body (or empty string)
-        - Timestamp (ISO-8601 UTC)
+        - `Remitly-Date` header value (ISO-8601 UTC timestamp)
+        - SHA-256 hash of the request body (hex-encoded, or hash of empty string for GET requests)
+
+        Signature format: `keyId="<key_id>",signature="<base64_signature>"`
 
         Headers required:
-        - `Remitly-Signature`: Base64-encoded signature
-        - `Remitly-Timestamp`: ISO-8601 UTC timestamp
-        - `Remitly-Key-Id`: Your public key identifier
+        - `Remitly-Signature`: Signature in the format above
+        - `Remitly-Date`: ISO-8601 UTC timestamp (must be within 5 minutes of server time)
+
+        For detailed authentication instructions, see the Authentication & Security section.
 
   schemas:
     # Registration Session Schemas
@@ -1259,6 +1261,7 @@ components:
         - type
         - start_date
         - end_date
+        - format
       properties:
         type:
           type: string
@@ -1272,6 +1275,10 @@ components:
           type: string
           format: date
           description: End date for the report (YYYY-MM-DD)
+        format:
+          type: string
+          enum: [csv, json]
+          description: Output format for the report
 
     Report:
       type: object

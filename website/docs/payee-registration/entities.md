@@ -5,6 +5,8 @@ title: Entities
 
 # Payee Entities
 
+This page provides an overview of the payee entity structure. For complete schemas with validation rules and examples, see the [API Reference](/relyplat).
+
 ## Payee
 
 A Payee represents a partner's user within Remitly's platform and is the canonical entity used for onboarding, KYC, and payout eligibility

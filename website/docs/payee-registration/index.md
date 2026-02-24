@@ -46,10 +46,23 @@ sequenceDiagram
 
 ## 1. Registration Session Created
 
-* A registration session is created via `POST /v1/registration-sessions`.  
-* At this stage, a Payee resource does **not** yet exist.  
-* A time-limited `registration_link` is returned.  
+* A registration session is created via `POST /v1/registration-sessions`.
+* At this stage, a Payee resource does **not** yet exist.
+* A time-limited `registration_link` is returned.
 * No `payee_id` is issued to the partner.
+
+### Important Registration Session Behavior
+
+* The `registration_link` contains a cryptographically random, single-use token with a **maximum lifetime of 15 minutes**
+* The token is:
+  * Bound to the provided `external_user_id`
+  * Invalidated upon first successful onboarding completion
+  * Automatically expired after 15 minutes if unused
+* After successful completion, the token becomes permanently invalid and cannot be reused
+* If the token expires or onboarding is completed, the partner must generate a new registration session to restart the flow
+* The `registration_link` **must be opened in a new tab or browser window** (iframe embedding is not supported)
+* Remitly will return the `state` value unchanged as a query parameter to the provided `redirect_url` upon successful completion
+* The `locale` parameter determines the language of the registration page. If not provided or supported, it defaults to `en`
 
 ## 2. Onboarding Initiated
 

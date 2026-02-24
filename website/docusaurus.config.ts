@@ -1,12 +1,13 @@
 import {themes as prismThemes} from 'prism-react-renderer';
 import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
+import type * as OpenApiPlugin from 'docusaurus-plugin-openapi-docs';
 
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
 const config: Config = {
   title: 'Remitly Platform API',
-  tagline: 'Secure, scalable payout infrastructure for your business',
+  tagline: "Here you'll find guides, resources, and references to build with Remitly Platform.",
   favicon: 'img/favicon.ico',
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
@@ -76,10 +77,10 @@ const config: Config = {
       respectPrefersColorScheme: true,
     },
     navbar: {
-      title: 'Remitly Platform',
+      title: 'Platform',
       logo: {
         alt: 'Remitly Platform Logo',
-        src: 'img/logo.svg',
+        src: 'img/icon.png',
       },
       items: [
         {
@@ -137,6 +138,24 @@ const config: Config = {
     },
   
   } satisfies Preset.ThemeConfig,
+  plugins: [
+    [
+      'docusaurus-plugin-openapi-docs',
+      {
+        id: 'api',
+        docsPluginId: 'classic',
+        config: {
+          remitlyplatform: {
+            specPath: 'openapi/relyplat/index.openapi.yaml',
+            outputDir: 'docs/apis',
+            sidebarOptions: {
+              groupPathsBy: 'tag',
+            },
+          } satisfies OpenApiPlugin.Options,
+        },
+      },
+    ],
+  ],
 };
 
 export default config;

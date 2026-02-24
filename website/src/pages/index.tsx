@@ -38,37 +38,9 @@ function HomepageFeatures() {
   return (
     <section className={styles.features}>
       <div className="container">
-        <div className="row">
-          <div className="col col--4">
-            <div className="text--center padding-horiz--md">
-              <Heading as="h3">🔐 Secure Authentication</Heading>
-              <p>
-                Two-way cryptographic signing using ECDSA P-256 with SHA-256 ensures
-                every request is authenticated and tamper-proof.
-              </p>
-            </div>
-          </div>
-          <div className="col col--4">
-            <div className="text--center padding-horiz--md">
-              <Heading as="h3">⚡ High Performance</Heading>
-              <p>
-                Process up to 10,000 payouts per batch with 100 RPS rate limits.
-                Built for scale with idempotency support for safe retries.
-              </p>
-            </div>
-          </div>
-          <div className="col col--4">
-            <div className="text--center padding-horiz--md">
-              <Heading as="h3">🌍 Global Reach</Heading>
-              <p>
-                Streamlined payee onboarding with KYC/KYB compliance, real-time
-                webhooks, and comprehensive settlement reporting.
-              </p>
-            </div>
-          </div>
-        </div>
       </div>
     </section>
+    
   );
 }
 

@@ -17,125 +17,27 @@ To register your webhook endpoint, contact Remitly Platform with your HTTPS endp
 
 ## Webhook Events
 
+The following webhook events are sent when significant state changes occur:
+
 ### payee.created
 
-Fired when a payee is created.
-
-**Example Payload**
-
-```json
-{
-  "id": "evt_101",
-  "type": "payee.created",
-  "timestamp": "2024-10-01T14:30:00Z",
-  "data": {
-    "payee_id": "payee123",
-    "external_user_id": "externalUser123",
-    "status": "active",
-    "individual": {
-      "personal_information": {
-        "first_name": "John",
-        "middle_name": "Joe",
-        "last_name": "Smith",
-        "second_last_name": "Doe",
-        "date_of_birth": "1980-01-01"
-      },
-      "address": {
-        "line_1": "123 Test Street",
-        "line_2": "Apt 300",
-        "postal_code": "00000",
-        "city": "Seattle",
-        "subdivision": "WA",
-        "country": "USA"
-      },
-      "phone": "+12225550123",
-      "email": "john.smith@example.com"
-    }
-  }
-}
-```
+Fired when a payee successfully completes onboarding and a Payee resource is created.
 
 ### payee.status_updated
 
-Fired when an individual payee status changes.
-
-**Example Payload**
-
-```json
-{
-  "id": "evt_101",
-  "type": "payee.status_updated",
-  "timestamp": "2024-10-01T14:30:00Z",
-  "data": {
-    "payee_id": "payee123",
-    "external_user_id": "externalUser123",
-    "status": "active",
-    "individual": {
-      "personal_information": {
-        "first_name": "John",
-        "middle_name": "Joe",
-        "last_name": "Smith",
-        "second_last_name": "Doe",
-        "date_of_birth": "1980-01-01"
-      },
-      "address": {
-        "line_1": "123 Test Street",
-        "line_2": "Apt 300",
-        "postal_code": "00000",
-        "city": "Seattle",
-        "subdivision": "WA",
-        "country": "USA"
-      },
-      "phone": "+12225550123",
-      "email": "john.smith@example.com"
-    }
-  }
-}
-```
+Fired when a payee's status changes (e.g., `pending` → `active`, `active` → `restricted`).
 
 ### payout.status_updated
 
-Fired when an individual payout changes state.
-
-**Example Payload**
-
-```json
-{
-  "id": "evt_101",
-  "type": "payout.status_updated",
-  "timestamp": "2024-10-01T14:30:00Z",
-  "data": {
-    "id": "pay_alpha",
-    "external_payout_id": "external_payout_123",
-    "status": "SUCCESSFUL",
-    "amount": "100.00",
-    "currency": "USD",
-    "metadata": { "bonus_id": "B-99" },
-    "created_at": "2024-10-01T12:05:00Z"
-  }
-}
-```
+Fired when an individual payout changes state (e.g., `PENDING` → `SUCCESSFUL`, `PENDING` → `FAILED`).
 
 ### batch.status_updated
 
-Fired when the batch changes state.
+Fired when a batch changes state (e.g., `INITIALIZED` → `PROCESSING`, `PROCESSING` → `COMPLETED`).
 
-**Example Payload**
+## Webhook Payload Schema
 
-```json
-{
-  "id": "evt_202",
-  "type": "batch.status_updated",
-  "timestamp": "2024-10-01T16:00:00Z",
-  "data": {
-    "id": "bat_9921",
-    "status": "COMPLETED",
-    "total_transferred_amount": "50000.00",
-    "currency": "USD",
-    "created_at": "2024-10-01T12:00:00Z"
-  }
-}
-```
+For detailed webhook payload schemas and examples, see the [API Reference](/relyplat#tag/Webhooks).
 
 ## Best Practices
 
