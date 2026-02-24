@@ -59,7 +59,6 @@ For detailed API endpoint documentation including request/response schemas, para
 
 - **Payouts**: Create and retrieve individual payouts
 - **Batches**: Create, manage, and execute batch payouts (up to 10,000 payouts per batch)
-- **Reports**: Generate and download settlement reports
 
 ## Next Steps
 
