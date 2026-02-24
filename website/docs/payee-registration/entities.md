@@ -66,14 +66,12 @@ A Payee represents a partner's user within Remitly's platform and is the canonic
 
 | Attribute | Type | Description | Required |
 |:----------|:-----|:------------|:---------|
-| `name` | `string` | `Legal name of the organization.` |  |
+| `name` | `string` | `Legal name of the organization.` | `Y` |
 | `trade_name` | `string` | `Doing Business As (DBA) name.` |  |
-| `address` | `object` | `Legal/Physical address (see Address entity).` |  |
-| `country_of_registration` | `string` | `ISO-3166-1 alpha-3 country code.` |  |
-| `org_category` | `string` | `High-level business category.` |  |
-| `org_category_other` | `string` | `Custom category if org_category is "other".` |  |
+| `address` | `object` | `Legal/Physical address (see Address entity).` | `Y` |
+| `country_of_registration` | `string` | `ISO-3166-1 alpha-3 country code.` | `Y` |
 | `org_industry_classification` | `object` | `Industry classification (see OrgIndustryClassification).` |  |
-| `entity_type` | `string` | `Legal entity type (e.g., corporation, partnership).` |  |
+| `entity_type` | `string` | `Legal entity type (e.g., corporation, partnership).` | `Y` |
 | `org_description` | `object` | `Business description details (see OrgDescription).` |  |
 | `partners` | `array of objects` | `List of key personnel/partners (see Partner entity).` |  |
 | `no_of_employees_range` | `string` | `Range of total employees (e.g., 1-10, 11-50).` |  |
@@ -103,25 +101,19 @@ A Payee represents a partner's user within Remitly's platform and is the canonic
 | Attribute | Type | Description | Required |
 |:----------|:-----|:------------|:---------|
 | `title` | `string` | `Partner's title (e.g., CEO, Director).` |  |
-| `title_list` | `array of string` | `List of available titles for selection.` |  |
-| `title_other_value` | `string` | `Custom title if not in list.` |  |
 | `countries_of_citizenship` | `array of string` | `ISO-3166-1 alpha-3 country codes.` |  |
 | `personal_information` | `object` | `Partner's personal information (see Personal Information entity).` |  |
 | `address` | `object` | `Partner's address (see Address entity).` |  |
 | `phone_number` | `string` | `E.164-formatted phone number.` |  |
-| `tax_id_last_four` | `string` | `Last four digits of tax ID.` |  |
 | `ownership_percentage` | `number` | `Percentage of company ownership.` |  |
-| `ekyc_status` | `string` | `Status of the electronic KYC check.` |  |
-| `watchlist_status` | `string` | `Status of the watchlist check.` |  |
 | `type` | `array of string` | `Partner roles/types.` |  |
 
 ### Org Identifier
 
 | Attribute | Type | Description | Required |
 |:----------|:-----|:------------|:---------|
-| type | string | Type of identifier (e.g., EIN, VAT, LEI). |  |
-| value | string | The actual identifier number. |  |
-| country | string | ISO-3166-1 alpha-3 country code of issue. |  |
-| jurisdiction | object | Further jurisdictional details if needed. |  |
-| is_primary | boolean | Indicates if this is the main identifier. |  |
+| `type` | `string` | `Type of identifier (e.g., EIN, VAT, LEI).` |  |
+| `value` | `string` | `The actual identifier number.` |  |
+| `country` | `string` | `ISO-3166-1 alpha-3 country code of issue.` |  |
+| `jurisdiction` | `object` | `Further jurisdictional details if needed.` |  |
 
