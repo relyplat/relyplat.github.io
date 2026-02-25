@@ -29,7 +29,7 @@ tags:
 
 
 security:
-  - RemitlySignature: []
+  - BearerAuth: []
 
 paths:
   /v1/registration-sessions:
@@ -1159,22 +1159,18 @@ components:
         example: "123e4567-e89b-12d3-a456-426614174000"
 
   securitySchemes:
-    RemitlySignature:
-      type: apiKey
-      in: header
-      name: Remitly-Signature
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
       description: |
-        ECDSA P-256 with SHA-256 signature for request authentication.
+        OAuth 2.0 Bearer token authentication.
 
-        The signature is computed over the concatenation of:
-        - `Remitly-Date` header value (ISO-8601 UTC timestamp)
-        - SHA-256 hash of the request body (hex-encoded, or hash of empty string for GET requests)
+        To authenticate API requests:
+        1. Exchange your `client_id` and `client_secret` for an access token from the Remitly Platform Auth Service
+        2. Include the token in the `Authorization` header: `Authorization: Bearer <access_token>`
 
-        Signature format: `keyId="<key_id>",signature="<base64_signature>"`
-
-        Headers required:
-        - `Remitly-Signature`: Signature in the format above
-        - `Remitly-Date`: ISO-8601 UTC timestamp (must be within 5 minutes of server time)
+        Tokens are short-lived JWTs (typically 1 hour). Cache the token until close to expiry to avoid unnecessary overhead.
 
         For detailed authentication instructions, see the Authentication & Security section.
 

@@ -5,15 +5,15 @@ title: Webhooks
 
 # Webhooks
 
-Remitly Platform sends webhook notifications to your registered endpoint when significant events occur. Webhooks are signed using the ECDSA P-256 with SHA-256 scheme described in the [Authentication & Security](../getting-started/authentication) section. You must verify the signature of incoming webhooks before processing them.
+Remitly Platform sends webhook notifications to your registered endpoint when significant events occur. Webhooks are signed using HMAC-SHA256 signatures described in the [Authentication & Security](../getting-started/authentication) section. You must verify the signature of incoming webhooks before processing them.
 
 ## Registering Your Endpoint
 
 To register your webhook endpoint, contact Remitly Platform with your HTTPS endpoint URL. Your endpoint must:
 
-- Accept POST requests with JSON payloads  
-- Return a 2xx status code within 10 seconds to acknowledge receipt  
-- Verify the request signature using Remitly Platform's public key
+- Accept POST requests with JSON payloads
+- Return a 2xx status code within 10 seconds to acknowledge receipt
+- Verify the request signature using your webhook secret
 
 ## Webhook Events
 

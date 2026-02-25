@@ -2,152 +2,68 @@
 
 ## Authentication & Security
 
-Remitly Platform uses a two-way authentication model to secure all HTTP communication leveraging a cryptographic signing scheme (ECDSA P-256 with SHA-256). You must sign every request with your private key and include the following headers.
+The Remitly Platform API uses industry-standard security protocols to ensure your data remains protected.
 
-#### When you call Remitly Platform
+### 1\. Authenticating Your Requests
 
-* You sign each outgoing request to Remitly Platform using your private key  
-* Remitly Platform verifies your signatures using your public key
+To call the Remitly Platform API, you must provide a **Bearer Token** in the `Authorization` header of every request. These tokens are issued by the **Remitly Platform Auth Service**.
 
-```mermaid
-flowchart LR
-    PB["Partner Backend<br/>(Signer 🔒)"] -->|signed request| RP["Remitly Platform<br/>(Verifier 🔍)"]
+#### Step 1: Obtain Credentials
 
-    style PB fill:#FFE4C4,stroke:#E6A852,color:#333
-    style RP fill:#D6EAF8,stroke:#5DADE2,color:#333
+During onboarding, Remitly will securely provide you with:
+
+* `client_id`: A unique identifier for your application.  
+* `client_secret`: A confidential string used to request tokens.  
+* `auth_url`: The endpoint used to exchange credentials for tokens.
+
+#### Step 2: Request an Access Token
+
+Exchange your credentials for a short-lived JSON Web Token (JWT). We recommend caching this token until it is close to expiry (typically 1 hour) to avoid unnecessary network overhead.
+
+#### Step 3: Use the Token
+
+Include the `access_token` in the `Authorization` header of your API calls.
+
+```
+GET /v1/payees
+Authorization: Bearer eyJhbGci...
 ```
 
-#### When Remitly Platform calls you
+### 2\. Verifying Webhooks
 
-* Remitly Platform signs each outgoing request to your service using our private key  
-* You verify each incoming request using the Remitly Platform public key 
+When Remitly sends a webhook to your configured endpoint, you must verify that the request originated from Remitly and that the payload has not been tampered with. We use **Versioned HMAC-SHA256** signatures to support zero-downtime secret rotation.
 
-```mermaid
-flowchart LR
-    RP["Remitly Platform<br/>(Signer 🔒)"] -->|signed webhook| PB["Partner Backend<br/>(Verifier 🔍)"]
+#### Step 1: Retrieve Your Webhook Secret
 
-    style RP fill:#D6EAF8,stroke:#5DADE2,color:#333
-    style PB fill:#FFE4C4,stroke:#E6A852,color:#333
-```
+Remitly provides a unique **Webhook Signing Secret** for each environment. We recommend your implementation supports a **list of secrets** to allow for seamless rotation.
 
-### Step 1: Get Started
+#### Step 2: Inspect the Headers
 
-You only need to perform this step once per environment (e.g., sandbox, production).
+Each webhook request contains two critical headers:
 
-#### 1\. Generate a key pair
+* `X-Remitly-Signature`: One or more comma-separated signatures, prefixed by a version (e.g., `v1=hash1, v1=hash2`).  
+* `X-Remitly-Timestamp`: An ISO-8601 timestamp of when the request was sent.
 
-Use OpenSSL to create an ECDSA-P256 public/private key pair:
+#### Step 3: Verify the Signature
 
-```shell
-openssl ecparam -name prime256v1 -genkey -noout -out <key-id>.private.pem
-```
+To verify the request, follow these steps in your backend:
 
-Remitly Platform will issue you a \<key-id\> for each environment (e.g. sandbox, preprod, prod). 
+1. **Prevent Replay Attacks:** Compare the `X-Remitly-Timestamp` to your current system time. Reject requests older than **300 seconds**.  
+2. **Prepare the Signature Base:** Concatenate the timestamp and the raw JSON request body using a period (`.`) as a separator: `string_to_sign = timestamp + "." + raw_request_body`  
+3. **Compute and Compare:** \* Generate a local HMAC-SHA256 hash of the `string_to_sign` using your active secret.  
+* Compare your generated hash against the values in the `X-Remitly-Signature` header.  
+* If you are rotating secrets, repeat this for your "previous" secret. If any match is found, the request is valid.
 
-#### 2\. Store the `private key` securely
+**Note:** Always use a **constant-time string comparison** function (like `timingSafeEqual`) to prevent timing attacks.
 
-Use a secure secrets manager (e.g., AWS Secrets Manager or GCP Secret Manager) to store the private key. You’ll use this to sign requests.
+### Security Best Practices
 
-#### 3\. Extract the public key
+* **Secret Storage:** Store all `client_secrets` and Webhook Secrets in a secure vault (e.g., AWS Secrets Manager, HashiCorp Vault).  
+* **Zero-Downtime Rotation:** When rotating a secret, keep the old secret active in your code for 24 hours while Remitly transitions to the new one.
 
-Use openssl to extract the public key from the private key.
+## Additional Security Mechanism
 
-```shell
-openssl ec -in <key-id>.private.pem -pubout -out <key-id>.public.pem
-```
-
-#### 4\. Share the public key
-
-Contact Remitly Platform to securely share your public key. We’ll add it to your partner profile.
-
-### Step 2: Sign Requests to Remitly Platform
-
-Each time your backend sends a request to Remitly Platform, follow these steps:
-
-#### 1\. Generate the date
-
-Create an ISO-8601 UTC timestamp (e.g., `2024-05-12T17:45:00Z`). This becomes your `remitly-date` header. The timestamp is valid for 300 seconds.
-
-#### 2\. Generate the signature
-
-Use your private key, the remitly-date, and the serialized HTTP request body to generate a signature:
-
-```javascript
-const signature = sign(privateKey, remitlyDate, payload);
-```
-
-Example `sign` function:
-
-```javascript
-export const sign = (
-  privateKeyPem: string,
-  remitlyDate: string,
-  payload: string
-): string => {
-  const privateKey = createPrivateKey(privateKeyPem)
-  const hashedPayload = createHash('sha256').update(payload, 'utf8').digest('base64');
-  const stringToSign = remitlyDate.trim() + '\n' + hashedPayload
-  const sign = createSign('sha256')
-  sign.update(stringToSign)
-  sign.end()
-  const signature = sign.sign({ key: privateKey, dsaEncoding: 'ieee-p1363' })
-  return signature.toString('base64')
-};
-```
-
-#### 3\. Send the request
-
-Include these HTTP headers with your request:
-
-| `Header` | `Type` | `Description` |
-| :---- | :---- | :---- |
-| `authorization` | `string` | `Scheme and Key ID. Format: REMV1-ECDSA-P256-SHA256 <key-id>` |
-| `signature` | `string` | `Message signature.` |
-| `remitly-date` | `string` | `ISO-8601 UTC timestamp (valid for 300s).` |
-
-### Step 3: Verify Requests from Remitly Platform
-
-Every time Remitly Platform calls your service, verify that the request is legitimate.
-
-#### 1\. Check required headers
-
-Reject the request if any of these are missing or malformed:
-
-1. `remitly-date` (must be within 300 seconds of current time)  
-2. `authorization` (must follow format: REMV1-ECDSA-P256-SHA256 \<key-id\>)  
-3. `signature`
-
-#### 2\. Verify `signature`
-
-Use the provided headers, payload, and Remitly Platform’s public key to validate the signature:
-
-```javascript
-const verified = verify(publicKey, signature, remitlyDate, payload);
-
-export const verify = (
-  publicKeyPem: string,
-  signature: string,
-  remitlyDate: string,
-  payload: string,
-): boolean => {
-  const publicKey = createPublicKey(publicKeyPem);
-  const hashedPayload = createHash("sha256")
-    .update(payload, "utf8")
-    .digest("base64");
-  const stringToSign = remitlyDate.trim() + "\n" + hashedPayload;
-  const verify = createVerify("sha256");
-  verify.update(stringToSign);
-  verify.end();
-  const verified = verify.verify(
-    { key: publicKey, dsaEncoding: "ieee-p1363" },
-    signature,
-    "base64",
-  );
-  return verified;
-};
-```
-
-If the `verify` function returns `false`, reject the request.
+Additional security mechanisms can be provided based on the specific requirements of our partners. For more details, please reach out to your account manager.
 
 ## Versioning
 
@@ -1205,7 +1121,7 @@ GET /v1/reports/{report_id}
 
 ## Webhooks
 
-Remitly Platform sends webhook notifications to your registered endpoint when significant events occur. Webhooks are signed using the  ECDSA P-256 with SHA-256 scheme described in the Authentication & Security section. You must verify the signature of incoming webhooks before processing them.
+Remitly Platform sends webhook notifications to your registered endpoint when significant events occur. Webhooks are signed using HMAC-SHA256 signatures as described in the Authentication & Security section. You must verify the signature of incoming webhooks before processing them.
 
 To register your webhook endpoint, contact Remitly Platform with your HTTPS endpoint URL. Your endpoint must:
 
