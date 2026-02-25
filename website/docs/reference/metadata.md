@@ -9,11 +9,9 @@ Some Remitly Platform API endpoints accept a `metadata` object that stores addit
 
 ## Supported Field Types
 
-- String  
-- Number  
-- Boolean
+- String
 
-**Note:** Arrays and nested objects are not supported within metadata.
+**Note:** Only string values are supported. Arrays, nested objects, numbers, and booleans are not supported within metadata.
 
 ## Constraints
 
@@ -34,8 +32,8 @@ Metadata is useful for storing custom reference IDs, tags, or any additional con
     "invoice_id": "INV-2024-001",
     "department": "engineering",
     "project_code": "PROJ-789",
-    "is_bonus": true,
-    "quarter": 1
+    "is_bonus": "true",
+    "quarter": "Q1"
   }
 }
 ```

@@ -31,7 +31,7 @@ title: Errors
 | `recipient_rejected` | `The recipient's bank rejected the transfer.` |
 | `invalid_payout_status` | `Payout cannot be cancelled in its current status.` |
 | `already_cancelled` | `This payout has already been cancelled.` |
-| `cancellation_window_expired` | `Cancellation is not allowed for payouts processed more than 120 days ago.` |
+| `cancellation_window_expired` | `Cancellation is not allowed for payouts processed more than 30 days ago.` |
 | `internal_error` | `An unexpected error occurred. Contact support if this persists.` |
 
 ## Example Error Response

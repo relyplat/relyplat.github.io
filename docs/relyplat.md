@@ -796,7 +796,7 @@ Requests cancellation of a payout. The payout status will be set to `CANCELLATIO
 
 * If the payout has not been processed yet, it will be cancelled without any money transfer and the status will become `CANCELLED`
 * If the payout was successful, Remitly will attempt to claw back the funds from the payee. The status will become `CANCELLED_WITH_CLAWBACK` (partial or full recovery) or `CANCELLATION_FAILED` (no recovery possible)
-* Cancellation requests are not accepted for payouts processed more than 120 days ago
+* Cancellation requests are not accepted for payouts processed more than 30 days ago
 * Cancellation requests are not accepted for payouts already in a cancelled state
 
 **Example Request**
@@ -828,7 +828,7 @@ Requests cancellation of a payout. The payout status will be set to `CANCELLATIO
 | :---- | :---- |
 | `invalid_payout_status` | `Payout cannot be cancelled in its current status.` |
 | `already_cancelled` | `This payout has already been cancelled.` |
-| `cancellation_window_expired` | `Cancellation is not allowed for payouts processed more than 120 days ago.` |
+| `cancellation_window_expired` | `Cancellation is not allowed for payouts processed more than 30 days ago.` |
 
 **Conflict Response (409)**
 
@@ -1330,8 +1330,6 @@ Some Remitly Platform API endpoints accept a `metadata` object that stores addit
 **Supported Field Types:**
 
 - String  
-- Number  
-- Boolean
 
 **Note:** Arrays and nested objects are not supported within metadata.
 
@@ -1370,5 +1368,5 @@ Metadata is useful for storing custom reference IDs, tags, or any additional con
 | `recipient_rejected` | `The recipient's bank rejected the transfer.` |
 | `invalid_payout_status` | `Payout cannot be cancelled in its current status.` |
 | `already_cancelled` | `This payout has already been cancelled.` |
-| `cancellation_window_expired` | `Cancellation is not allowed for payouts processed more than 120 days ago.` |
+| `cancellation_window_expired` | `Cancellation is not allowed for payouts processed more than 30 days ago.` |
 | `internal_error` | `An unexpected error occurred. Contact support if this persists.` |

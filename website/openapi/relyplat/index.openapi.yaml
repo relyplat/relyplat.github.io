@@ -406,7 +406,7 @@ paths:
         - If the payout was successful, Remitly will attempt to claw back the funds from the payee.
           The status will become `CANCELLED_WITH_CLAWBACK` (partial or full recovery) or
           `CANCELLATION_FAILED` (no recovery possible)
-        - Cancellation requests are not accepted for payouts processed more than 120 days ago
+        - Cancellation requests are not accepted for payouts processed more than 30 days ago
         - Cancellation requests are not accepted for payouts already in a cancelled state
 
         You will receive `payout.status_updated` webhooks for status changes.
@@ -466,7 +466,7 @@ paths:
                   value:
                     error_type: "invalid_request_error"
                     code: "cancellation_window_expired"
-                    message: "Cancellation is not allowed for payouts processed more than 120 days ago."
+                    message: "Cancellation is not allowed for payouts processed more than 30 days ago."
         '404':
           description: Payout not found
           content:
@@ -1846,13 +1846,10 @@ components:
     Metadata:
       type: object
       additionalProperties:
-        oneOf:
-          - type: string
-          - type: number
-          - type: boolean
+        type: string
       description: |
         Custom key-value pairs for additional context.
         - Maximum 10 fields
         - Maximum 255 characters per value
-        - Supports string, number, and boolean values only
-        - Arrays and nested objects are not supported
+        - Only string values are supported
+        - Arrays, nested objects, numbers, and booleans are not supported

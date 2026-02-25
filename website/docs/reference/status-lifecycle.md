@@ -58,7 +58,7 @@ SUBMITTED → SUCCESSFUL | FAILED
 
 ### Cancellation Transitions
 
-Cancellation can be requested for payouts that have not yet reached a terminal state, or for successful payouts within 120 days of processing.
+Cancellation can be requested for payouts that have not yet reached a terminal state, or for successful payouts within 30 days of processing.
 
 ```
 PENDING → CANCELLATION_REQUESTED → CANCELLED
