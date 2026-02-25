@@ -21,7 +21,7 @@ title: Errors
 | `invalid_parameter` | `A parameter value is invalid or out of range.` |
 | `authentication_failed` | `The request signature is invalid or expired.` |
 | `authorization_failed` | `The auth context does not have permission for this operation.` |
-| `resource_not_found` | `The requested resource (batch, payout, payee) does not exist.` |
+| `resource_not_found` | `The requested resource (batch, payout, report) does not exist.` |
 | `duplicate_request` | `A request with this idempotency key has already been processed.` |
 | `rate_limit_exceeded` | `Too many requests. Retry after the indicated time.` |
 | `batch_not_editable` | `The batch is no longer in INITIALIZED state and cannot be modified.` |

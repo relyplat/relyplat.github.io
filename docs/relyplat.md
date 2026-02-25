@@ -1011,6 +1011,73 @@ GET /v1/batches/{batch_id}/payouts
 }
 ```
 
+## Report APIs
+
+Currently, only **settlement** reports are supported.
+
+### 8\. Create report
+
+Trigger a background job to generate a settlement report.
+
+```
+POST /v1/reports
+```
+
+**Headers**
+
+* **Idempotency-Key** `string` — **REQUIRED**  
+  * A unique UUID v4 for the request.
+
+**Attributes**
+
+* **type** `string` — **REQUIRED**  
+  * Type of report to generate. Currently only `"settlement"` is supported.  
+* **start\_time** `string` — **REQUIRED**  
+  * Start time for the report period (ISO-8601 UTC timestamp).  
+* **end\_time** `string` — **REQUIRED**  
+  * End time for the report period (ISO-8601 UTC timestamp).  
+* **format** `string` — **REQUIRED**  
+  * Output format for the report (e.g., "csv", "json").
+
+**Example Request**
+
+```json
+{
+  "type": "settlement",
+  "start_time": "2024-10-01T00:00:00Z",
+  "end_time": "2024-10-02T00:00:00Z",
+  "format": "csv"
+}
+```
+
+**Example Response (201 Created)**
+
+```json
+{
+  "report_id": "rpt_888999abc",
+  "status": "PROCESSING",
+  "created_at": "2024-10-02T08:00:00Z"
+}
+```
+
+### 9\. Check report status
+
+Poll this endpoint to check if the report is ready for download.
+
+```
+GET /v1/reports/{report_id}
+```
+
+**Example Response (200 OK)**
+
+```json
+{
+  "report_id": "rpt_888999abc",
+  "status": "COMPLETED",
+  "download_url": "https://access.remitly.com/v1/reports/rpt_888.csv"
+}
+```
+
 ## Webhooks
 
 Remitly Platform sends webhook notifications to your registered endpoint when significant events occur. Webhooks are signed using the  ECDSA P-256 with SHA-256 scheme described in the Authentication & Security section. You must verify the signature of incoming webhooks before processing them.
@@ -1187,7 +1254,7 @@ Metadata is useful for storing custom reference IDs, tags, or any additional con
 | `invalid_parameter` | `A parameter value is invalid or out of range.` |
 | `authentication_failed` | `The request signature is invalid or expired.` |
 | `authorization_failed` | `The auth context does not have permission for this operation.` |
-| `resource_not_found` | `The requested resource (batch, payout, payee) does not exist.` |
+| `resource_not_found` | `The requested resource (batch, payout, report) does not exist.` |
 | `duplicate_request` | `A request with this idempotency key has already been processed.` |
 | `rate_limit_exceeded` | `Too many requests. Retry after the indicated time.` |
 | `batch_not_editable` | `The batch is no longer in INITIALIZED state and cannot be modified.` |
