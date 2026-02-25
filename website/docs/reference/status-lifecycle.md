@@ -36,12 +36,15 @@ CANCEL_REQUESTED → CANCELLED
 
 | State | Description | Terminal |
 |:------|:------------|:--------:|
-| `PENDING` | `Payout has been created (standalone or in a batch) but processing has not started.` | `No` |
-| `VALIDATING` | `Payout is being validated (recipient details, routing, etc.).` | `No` |
-| `SUBMITTED` | `Payout has been submitted to the payment network.` | `No` |
-| `SUCCESSFUL` | `Payout has been successfully delivered to the recipient.` | `Yes` |
-| `FAILED` | `Payout failed due to an error (see error field for details).` | `Yes` |
-| `CANCELLED` | `Payout was cancelled before completion (e.g., batch was cancelled).` | `Yes` |
+| `PENDING` | Payout has been created (standalone or in a batch) but processing has not started. | No |
+| `VALIDATING` | Payout is being validated (recipient details, routing, etc.). | No |
+| `SUBMITTED` | Payout has been submitted to the payment network. | No |
+| `SUCCESSFUL` | Payout has been successfully delivered to the recipient. | Yes |
+| `FAILED` | Payout failed due to an error (see error field for details). | Yes |
+| `CANCELLED` | Payout was cancelled before funds were transferred. | Yes |
+| `CANCELLATION_REQUESTED` | A cancellation has been requested and is being processed asynchronously. | No |
+| `CANCELLED_WITH_CLAWBACK` | Payout was cancelled after processing; funds were clawed back (partial or full recovery). | Yes |
+| `CANCELLATION_FAILED` | Cancellation was attempted but clawback failed (no funds recovered). | Yes |
 
 ### Payout State Transitions
 
@@ -52,4 +55,22 @@ VALIDATING → SUBMITTED | FAILED
 VALIDATING → CANCELLED (batch cancelled during validation)
 SUBMITTED → SUCCESSFUL | FAILED
 ```
+
+### Cancellation Transitions
+
+Cancellation can be requested for payouts that have not yet reached a terminal state, or for successful payouts within 120 days of processing.
+
+```
+PENDING → CANCELLATION_REQUESTED → CANCELLED
+VALIDATING → CANCELLATION_REQUESTED → CANCELLED
+SUBMITTED → CANCELLATION_REQUESTED → CANCELLED
+SUCCESSFUL → CANCELLATION_REQUESTED → CANCELLED_WITH_CLAWBACK | CANCELLATION_FAILED
+```
+
+- **Before funds transferred:** Cancellation results in `CANCELLED` (no money movement)
+- **After successful payout:** Remitly attempts to claw back funds:
+  - `CANCELLED_WITH_CLAWBACK`: Partial or full recovery of funds
+  - `CANCELLATION_FAILED`: No funds could be recovered
+
+The `completed_amount` field indicates the net amount paid to the payee after any clawbacks.
 
