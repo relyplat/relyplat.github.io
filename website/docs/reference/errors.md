@@ -29,6 +29,10 @@ title: Errors
 | `invalid_routing` | `The recipient's routing number is invalid.` |
 | `invalid_account` | `The recipient's account number is invalid.` |
 | `recipient_rejected` | `The recipient's bank rejected the transfer.` |
+| `cannot_reverse_reversal` | `Reversal payouts cannot be reversed.` |
+| `invalid_payout_status` | `Only payouts with status SUCCESSFUL can be reversed.` |
+| `reversal_already_exists` | `A reversal already exists for this payout.` |
+| `no_reversible_amount` | `No amount available to reverse.` |
 | `internal_error` | `An unexpected error occurred. Contact support if this persists.` |
 
 ## Example Error Response

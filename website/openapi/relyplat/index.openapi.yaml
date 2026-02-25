@@ -205,6 +205,92 @@ paths:
                 $ref: '#/components/schemas/Error'
 
   /v1/payouts:
+    get:
+      tags:
+        - Payouts
+      summary: List payouts
+      operationId: listPayouts
+      description: |
+        Retrieves a paginated list of payouts.
+
+        Use cursor-based pagination with `limit` and `next_cursor` parameters.
+      parameters:
+        - name: type
+          in: query
+          required: false
+          description: Filter by payout type
+          schema:
+            type: string
+            enum: [PAYOUT, REVERSAL]
+        - name: payee_id
+          in: query
+          required: false
+          description: Filter by payee ID
+          schema:
+            type: string
+        - name: created_after
+          in: query
+          required: false
+          description: Return payouts created after this timestamp (ISO-8601 UTC)
+          schema:
+            type: string
+            format: date-time
+        - name: created_before
+          in: query
+          required: false
+          description: Return payouts created before this timestamp (ISO-8601 UTC)
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of payouts to return (default 100, max 1000)
+          schema:
+            type: integer
+            default: 100
+            maximum: 1000
+        - name: next_cursor
+          in: query
+          required: false
+          description: Pagination cursor from a previous response
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Payouts retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListPayoutsResponse'
+              example:
+                payouts:
+                  - id: "pay_alpha"
+                    external_payout_id: "external_payout_123"
+                    payee_id: "payee123"
+                    type: "PAYOUT"
+                    status: "SUCCESSFUL"
+                    amount: "100.00"
+                    currency: "USD"
+                    metadata:
+                      bonus_id: "B-99"
+                    created_at: "2024-10-01T12:05:00Z"
+                  - id: "pay_beta"
+                    external_payout_id: "external_payout_124"
+                    payee_id: "payee456"
+                    type: "PAYOUT"
+                    status: "SUCCESSFUL"
+                    amount: "200.00"
+                    currency: "USD"
+                    created_at: "2024-10-01T12:06:00Z"
+                next_cursor: "eyJpZCI6InBheV9iZXRhIn0="
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
     post:
       tags:
         - Payouts
@@ -241,6 +327,7 @@ paths:
                 id: "pay_standalone_001"
                 external_payout_id: "external_payout_123"
                 payee_id: "payee123"
+                type: "PAYOUT"
                 status: "PENDING"
                 amount: "250.00"
                 currency: "USD"
@@ -298,6 +385,100 @@ paths:
                 metadata:
                   bonus_id: "B-99"
                 created_at: "2024-10-01T12:05:00Z"
+        '404':
+          description: Payout not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/payouts/{payout_id}/reverse:
+    post:
+      tags:
+        - Payouts
+      summary: Reverse a payout
+      operationId: reversePayout
+      description: |
+        Reverses a successful payout. This creates a new payout with a negative amount
+        representing the reversal.
+
+        - Only payouts with status `SUCCESSFUL` can be reversed
+        - Only payouts with type `PAYOUT` can be reversed (reversals cannot be reversed)
+        - Only one reversal is allowed per payout
+        - The reversal amount will be the original payout amount, or the available amount if less
+
+        The reversal payout follows the same lifecycle as a standard payout and you will
+        receive `payout.status_updated` webhooks for status changes.
+      parameters:
+        - name: payout_id
+          in: path
+          required: true
+          description: Unique Remitly identifier for the payout to reverse
+          schema:
+            type: string
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReversalRequest'
+            example:
+              reason: "Customer requested refund"
+      responses:
+        '201':
+          description: Reversal created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payout'
+              example:
+                id: "pay_rev_12345"
+                payee_id: "payee123"
+                type: "REVERSAL"
+                original_payout_id: "pay_alpha"
+                status: "PENDING"
+                amount: "-100.00"
+                currency: "USD"
+                reason: "Customer requested refund"
+                created_at: "2024-11-01T10:00:00Z"
+        '400':
+          description: Invalid request (payout not reversible)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                cannot_reverse_reversal:
+                  summary: Cannot reverse a reversal
+                  value:
+                    error_type: "invalid_request_error"
+                    code: "cannot_reverse_reversal"
+                    message: "Reversal payouts cannot be reversed."
+                invalid_payout_status:
+                  summary: Invalid payout status
+                  value:
+                    error_type: "invalid_request_error"
+                    code: "invalid_payout_status"
+                    message: "Only payouts with status SUCCESSFUL can be reversed. Current status: PENDING."
+                reversal_already_exists:
+                  summary: Reversal already exists
+                  value:
+                    error_type: "invalid_request_error"
+                    code: "reversal_already_exists"
+                    message: "A reversal already exists for this payout."
+                no_reversible_amount:
+                  summary: No amount to reverse
+                  value:
+                    error_type: "invalid_request_error"
+                    code: "no_reversible_amount"
+                    message: "No amount available to reverse."
         '404':
           description: Payout not found
           content:
@@ -788,7 +969,6 @@ x-webhooks:
               data:
                 payee_id: "payee123"
                 external_user_id: "externalUser123"
-                previous_status: "pending"
                 status: "active"
       responses:
         '200':
@@ -803,26 +983,42 @@ x-webhooks:
       description: |
         Fired when a payout's status changes (e.g., from `PENDING` to `SUCCESSFUL` or `FAILED`).
 
-        This webhook is sent for both standalone payouts and batch payouts.
+        This webhook is sent for both standalone payouts, batch payouts, and reversals.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/PayoutStatusUpdatedEvent'
-            example:
-              id: "evt_201"
-              type: "payout.status_updated"
-              timestamp: "2024-10-01T12:30:00Z"
-              data:
-                payout_id: "pay_alpha"
-                external_payout_id: "external_payout_123"
-                batch_id: "bat_9921"
-                payee_id: "payee123"
-                previous_status: "PENDING"
-                status: "SUCCESSFUL"
-                amount: "1200.00"
-                currency: "USD"
+            examples:
+              standard_payout:
+                summary: Standard payout
+                value:
+                  id: "evt_201"
+                  type: "payout.status_updated"
+                  timestamp: "2024-10-01T12:30:00Z"
+                  data:
+                    payout_id: "pay_alpha"
+                    external_payout_id: "external_payout_123"
+                    payee_id: "payee123"
+                    status: "SUCCESSFUL"
+                    amount: "1200.00"
+                    currency: "USD"
+                    type: "PAYOUT"
+              reversal:
+                summary: Reversal payout
+                value:
+                  id: "evt_501"
+                  type: "payout.status_updated"
+                  timestamp: "2024-11-01T10:05:00Z"
+                  data:
+                    payout_id: "pay_rev_12345"
+                    payee_id: "payee123"
+                    status: "SUCCESSFUL"
+                    amount: "-100.00"
+                    currency: "USD"
+                    type: "REVERSAL"
+                    original_payout_id: "pay_alpha"
       responses:
         '200':
           description: Webhook received successfully
@@ -848,7 +1044,6 @@ x-webhooks:
               data:
                 batch_id: "bat_9921"
                 external_batch_id: "external_batch_123"
-                previous_status: "PROCESSING"
                 status: "COMPLETED"
                 total_amount: "50000.00"
                 total_completed_amount: "50000.00"
@@ -1202,20 +1397,36 @@ components:
           description: Unique Remitly identifier for the payout
         external_payout_id:
           type: string
-          description: Your unique identifier for this payout
+          description: Your unique identifier for this payout (not present for reversals)
         payee_id:
           type: string
           description: Remitly payee ID of the recipient
+        type:
+          type: string
+          enum: [PAYOUT, REVERSAL]
+          default: PAYOUT
+          description: |
+            Type of payout:
+            - `PAYOUT`: Standard payout (default)
+            - `REVERSAL`: A reversal of a previous payout
+        original_payout_id:
+          type: string
+          description: For reversals only, the ID of the original payout being reversed
         status:
           type: string
           enum: [PENDING, VALIDATING, SUBMITTED, SUCCESSFUL, FAILED, CANCELLED]
           description: Current status of the payout
         amount:
           type: string
-          description: Amount in decimal base currency units (e.g., "10.00" = $10.00 USD)
+          description: |
+            Amount in decimal base currency units (e.g., "10.00" = $10.00 USD).
+            For reversals, this is a negative value (e.g., "-10.00").
         currency:
           type: string
           description: ISO currency code
+        reason:
+          type: string
+          description: For reversals only, the reason for the reversal (required)
         metadata:
           $ref: '#/components/schemas/Metadata'
         error:
@@ -1224,6 +1435,16 @@ components:
           type: string
           format: date-time
           description: When the payout was created (ISO-8601 UTC)
+
+    ReversalRequest:
+      type: object
+      required:
+        - reason
+      properties:
+        reason:
+          type: string
+          maxLength: 500
+          description: Reason for the reversal
 
     PayoutError:
       type: object
@@ -1441,8 +1662,6 @@ components:
               type: string
             external_user_id:
               type: string
-            previous_status:
-              type: string
             status:
               type: string
 
@@ -1465,12 +1684,8 @@ components:
               type: string
             external_payout_id:
               type: string
-            batch_id:
-              type: string
-              description: Present only for batch payouts
+              description: Not present for reversals
             payee_id:
-              type: string
-            previous_status:
               type: string
             status:
               type: string
@@ -1478,6 +1693,13 @@ components:
               type: string
             currency:
               type: string
+            type:
+              type: string
+              enum: [PAYOUT, REVERSAL]
+              description: Type of payout
+            original_payout_id:
+              type: string
+              description: For reversals only, the ID of the original payout being reversed
 
     BatchStatusUpdatedEvent:
       type: object
@@ -1497,8 +1719,6 @@ components:
             batch_id:
               type: string
             external_batch_id:
-              type: string
-            previous_status:
               type: string
             status:
               type: string

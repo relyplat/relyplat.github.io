@@ -783,6 +783,7 @@ GET /v1/payouts/{payout_id}
   "id": "pay_alpha",
   "external_payout_id": "external_payout_123",
   "payee_id": "payee123",
+  "type": "PAYOUT",
   "status": "SUCCESSFUL",
   "amount": "100.00",
   "currency": "USD",
@@ -790,6 +791,117 @@ GET /v1/payouts/{payout_id}
   "created_at": "2024-10-01T12:05:00Z"
 }
 ```
+
+### 3\. List payouts
+
+```
+GET /v1/payouts
+```
+
+**Query Parameters**
+
+* **type** `string` — **OPTIONAL**
+  * Filter by payout type: `PAYOUT` or `REVERSAL`.
+* **payee\_id** `string` — **OPTIONAL**
+  * Filter by payee ID.
+* **created\_after** `string` — **OPTIONAL**
+  * Return payouts created after this timestamp (ISO-8601 UTC).
+* **created\_before** `string` — **OPTIONAL**
+  * Return payouts created before this timestamp (ISO-8601 UTC).
+* **limit** `integer` — **OPTIONAL**
+  * Maximum number of payouts to return (default 100, max 1000).
+* **next\_cursor** `string` — **OPTIONAL**
+  * Pagination cursor from a previous response.
+
+**Example Request**
+
+```
+GET /v1/payouts?type=REVERSAL&limit=10
+```
+
+**Example Response (200 OK)**
+
+```json
+{
+  "payouts": [
+    {
+      "id": "pay_rev_12345",
+      "payee_id": "payee123",
+      "type": "REVERSAL",
+      "original_payout_id": "pay_alpha",
+      "status": "SUCCESSFUL",
+      "amount": "-100.00",
+      "currency": "USD",
+      "reason": "Customer requested refund",
+      "created_at": "2024-11-01T10:00:00Z"
+    }
+  ],
+  "next_cursor": "eyJpZCI6InBheV9yZXZfMTIzNDUifQ=="
+}
+```
+
+### 4\. Reverse a payout
+
+```
+POST /v1/payouts/{payout_id}/reverse
+```
+
+Reverses a successful payout by creating a new payout with a negative amount.
+
+**Path Parameters**
+
+* **payout\_id** `string` — **REQUIRED**
+  * The ID of the payout to reverse.
+
+**Headers**
+
+* **Idempotency-Key** `string` — **REQUIRED**
+  * A unique UUID v4 for the request.
+
+**Attributes**
+
+* **reason** `string` — **REQUIRED**
+  * Reason for the reversal (max 500 characters).
+
+**Constraints**
+
+* Only payouts with status `SUCCESSFUL` can be reversed
+* Only payouts with type `PAYOUT` can be reversed (reversals cannot be reversed)
+* Only one reversal is allowed per payout
+* The reversal amount will be the original payout amount, or the available amount if less
+
+**Example Request**
+
+```json
+{
+  "reason": "Customer requested refund"
+}
+```
+
+**Example Response (201 Created)**
+
+```json
+{
+  "id": "pay_rev_12345",
+  "payee_id": "payee123",
+  "type": "REVERSAL",
+  "original_payout_id": "pay_alpha",
+  "status": "PENDING",
+  "amount": "-100.00",
+  "currency": "USD",
+  "reason": "Customer requested refund",
+  "created_at": "2024-11-01T10:00:00Z"
+}
+```
+
+**Error Responses**
+
+| Code | Message |
+| :---- | :---- |
+| `cannot_reverse_reversal` | `Reversal payouts cannot be reversed.` |
+| `invalid_payout_status` | `Only payouts with status SUCCESSFUL can be reversed.` |
+| `reversal_already_exists` | `A reversal already exists for this payout.` |
+| `no_reversible_amount` | `No amount available to reverse.` |
 
 ## Batch APIs
 
@@ -1201,11 +1313,14 @@ A Payout represents an individual transfer of funds to a specific recipient.
 | `Attribute` | `Type` | `Description` | `Example` |
 | :---- | :---- | :---- | :---- |
 | `id` | `string` | `Unique Remitly identifier for the payout.` | `pay_99212` |
-| `external_payout_id` | `string` | `The unique identifier you assigned to this payout.` | `external_payout_123` |
+| `external_payout_id` | `string` | `The unique identifier you assigned to this payout (not present for reversals).` | `external_payout_123` |
 | `payee_id` | `string` | `The internal Remitly ID for the recipient.` | `payee123` |
+| `type` | `string` | `Type of payout: PAYOUT (default) or REVERSAL.` | `PAYOUT` |
+| `original_payout_id` | `string` | `For reversals only, the ID of the original payout being reversed.` | `pay_alpha` |
 | `status` | `string` | `Current state: PENDING, VALIDATING, SUBMITTED, SUCCESSFUL, FAILED, CANCELLED.` | `SUCCESSFUL` |
-| `amount` | `string` | `The amount to be transferred in decimal base currency units (e.g., "10.00" = $10.00 USD).` | `1200.00` |
+| `amount` | `string` | `The amount in decimal base currency units. For reversals, this is negative (e.g., "-10.00").` | `1200.00` |
 | `currency` | `string` | `ISO currency code (currently USD).` | `USD` |
+| `reason` | `string` | `For reversals only, the reason for the reversal (required).` | `Customer requested refund` |
 | `metadata` | `dictionary` | `Custom key-value pairs for this specific payout.` | `{"bonus_id": "B-99"}` |
 | `error` | `object` | `Contains error details if the payout status is FAILED. Includes code (machine-readable error code) and message (human-readable description).` | `{"code": "invalid_routing", "message": "The routing number provided is invalid."}` |
 | `created_at` | `string` | `Timestamp when the payout was created (ISO-8601 UTC).` | `2024-10-01T12:00:00Z` |
@@ -1305,4 +1420,8 @@ Metadata is useful for storing custom reference IDs, tags, or any additional con
 | `invalid_routing` | `The recipient's routing number is invalid.` |
 | `invalid_account` | `The recipient's account number is invalid.` |
 | `recipient_rejected` | `The recipient's bank rejected the transfer.` |
+| `cannot_reverse_reversal` | `Reversal payouts cannot be reversed.` |
+| `invalid_payout_status` | `Only payouts with status SUCCESSFUL can be reversed.` |
+| `reversal_already_exists` | `A reversal already exists for this payout.` |
+| `no_reversible_amount` | `No amount available to reverse.` |
 | `internal_error` | `An unexpected error occurred. Contact support if this persists.` |
