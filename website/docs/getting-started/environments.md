@@ -1,3 +1,8 @@
+---
+sidebar_position: 3
+title: Environments
+---
+
 # Environments
 
 Remitly provides separate sandbox and production environments to support your integration journey.

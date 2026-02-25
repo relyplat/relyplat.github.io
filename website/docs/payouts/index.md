@@ -44,7 +44,7 @@ sequenceDiagram
 
     rect rgb(255, 245, 230)
         Note right of Client: Execute Batch
-        Client->>Remitly Platform API: PATCH /v1/batches/{id} {status: PROCESSING}
+        Client->>Remitly Platform API: POST /v1/batches/{id}/execute
         Remitly Platform API-->>Client: 200 OK (PROCESSING)
     end
 

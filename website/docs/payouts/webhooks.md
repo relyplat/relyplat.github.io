@@ -29,7 +29,7 @@ Fired when a payee's status changes (e.g., `pending` → `active`, `active` → 
 
 ### payout.status_updated
 
-Fired when an individual payout changes state (e.g., `PENDING` → `SUCCESSFUL`, `PENDING` → `FAILED`).
+Fired when an individual payout changes state (e.g., `PENDING` → `SUCCESSFUL`, `SUBMITTED` → `FAILED`, `SUCCESSFUL` → `CANCELLATION_REQUESTED`).
 
 ### batch.status_updated
 

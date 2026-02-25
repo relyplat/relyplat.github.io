@@ -74,3 +74,21 @@ SUCCESSFUL → CANCELLATION_REQUESTED → CANCELLED_WITH_CLAWBACK | CANCELLATION
 
 The `completed_amount` field indicates the net amount paid to the payee after any clawbacks.
 
+## Report States
+
+Reports track the generation status of settlement and transaction reports.
+
+| State | Description | Terminal |
+|:------|:------------|:--------:|
+| `PENDING` | Report generation has been requested and is queued. | No |
+| `PROCESSING` | Report is being generated. | No |
+| `COMPLETED` | Report generated successfully; download URL is available. | Yes |
+| `FAILED` | Report generation failed. | Yes |
+
+### Report State Transitions
+
+```
+PENDING → PROCESSING → COMPLETED
+                    → FAILED
+```
+

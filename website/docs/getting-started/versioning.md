@@ -18,8 +18,8 @@ All endpoints are prefixed with the version.
 ## Example
 
 ```
-https://api.remitly.com/v1/payouts
-https://api.remitly.com/v1/batches
-https://api.remitly.com/v1/registration-sessions
+/v1/payouts
+/v1/batches
+/v1/registration-sessions
 ```
 

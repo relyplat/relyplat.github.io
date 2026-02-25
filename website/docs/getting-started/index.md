@@ -28,7 +28,7 @@ The current version is `v1`. All endpoints are prefixed with the version (e.g., 
 
 ## Next Steps
 
-1. **Set up authentication** - Follow the [Authentication guide](./authentication) to generate your key pair
+1. **Set up authentication** - Follow the [Authentication guide](./authentication) to configure your credentials
 2. **Register a payee** - Use the [Payee Registration API](../payee-registration) to onboard users
 3. **Create payouts** - Send funds using the [Payouts API](../payouts)
 4. **Monitor status** - Set up [webhooks](../payouts/webhooks) to receive real-time updates

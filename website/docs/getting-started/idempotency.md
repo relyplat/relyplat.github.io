@@ -29,7 +29,7 @@ The Remitly Platform API supports idempotency for safely retrying requests witho
 ## Example
 
 ```bash
-curl -X POST https://api.remitly.com/v1/payouts \
+curl -X POST /v1/payouts \
   -H "Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000" \
   -H "Content-Type: application/json" \
   -d '{
