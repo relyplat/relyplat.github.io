@@ -1021,53 +1021,66 @@ POST /v1/batches/{batch_id}/payouts
 }
 ```
 
-### 5\. Update batch status (Execute/Cancel)
+### 5\. Execute a batch
 
 ```
-PATCH /v1/batches/{batch_id}
+POST /v1/batches/{batch_id}/execute
 ```
+
+Starts processing all payouts in the batch. The batch must be in `INITIALIZED` status.
 
 **Headers**
 
-* **Idempotency-Key** `string` — **REQUIRED**  
+* **Idempotency-Key** `string` — **REQUIRED**
   * A unique UUID v4 for the request.
-
-**Attributes**
-
-* **status** `string` — **REQUIRED**  
-  * Target state. Set to `PROCESSING` to start execution or `CANCEL_REQUESTED` to halt the batch.
-
-**Valid Status Transitions:**
-
-| `Target Status` | `Allowed When Current Status Is` | `Description` |
-| :---- | :---- | :---- |
-| `PROCESSING` | `INITIALIZED` | `Start executing the batch. All payouts will begin processing.` |
-| `CANCEL_REQUESTED` | `INITIALIZED` | `Cancel before execution. All payouts will be cancelled.` |
-| `CANCEL_REQUESTED` | `PROCESSING` | `Cancel during execution. Best effort to cancel remaining payouts.` |
-
-**Cancellation Behavior:**
-
-- If batch processing has **not yet started** (status is `INITIALIZED`): All payouts in the batch will be cancelled.  
-- If batch processing has **already started** (status is `PROCESSING`): Payouts that have already been processed will remain in their current state. We will make a best effort to cancel payouts that have not yet been processed.
-
-**Example Request**
-
-```json
-{
-  "status": "PROCESSING"
-}
-```
 
 **Example Response (200 OK)**
 
 ```json
 {
   "id": "bat_9921",
-  "status": "PROCESSING"
+  "external_batch_id": "external_batch_123",
+  "status": "PROCESSING",
+  "total_amount": "50000.00",
+  "currency": "USD",
+  "metadata": { "region": "North_America" },
+  "created_at": "2024-10-01T12:00:00Z"
 }
 ```
 
-### 6\. Get batch summary
+### 6\. Cancel a batch
+
+```
+POST /v1/batches/{batch_id}/cancel
+```
+
+Cancels a batch and its payouts.
+
+**Headers**
+
+* **Idempotency-Key** `string` — **REQUIRED**
+  * A unique UUID v4 for the request.
+
+**Cancellation Behavior:**
+
+- If batch processing has **not yet started** (status is `INITIALIZED`): All payouts in the batch will be cancelled.
+- If batch processing has **already started** (status is `PROCESSING`): Payouts that have already been processed will remain in their current state. We will make a best effort to cancel payouts that have not yet been processed.
+
+**Example Response (200 OK)**
+
+```json
+{
+  "id": "bat_9921",
+  "external_batch_id": "external_batch_123",
+  "status": "CANCEL_REQUESTED",
+  "total_amount": "50000.00",
+  "currency": "USD",
+  "metadata": { "region": "North_America" },
+  "created_at": "2024-10-01T12:00:00Z"
+}
+```
+
+### 7\. Get batch summary
 
 ```
 GET /v1/batches/{batch_id}
@@ -1088,7 +1101,7 @@ GET /v1/batches/{batch_id}
 }
 ```
 
-### 7\. List payouts in a batch
+### 8\. List payouts in a batch
 
 ```
 GET /v1/batches/{batch_id}/payouts
@@ -1127,7 +1140,7 @@ GET /v1/batches/{batch_id}/payouts
 
 Currently, only **settlement** reports are supported.
 
-### 8\. Create report
+### 9\. Create report
 
 Trigger a background job to generate a settlement report.
 
@@ -1172,7 +1185,7 @@ POST /v1/reports
 }
 ```
 
-### 9\. Check report status
+### 10\. Check report status
 
 Poll this endpoint to check if the report is ready for download.
 

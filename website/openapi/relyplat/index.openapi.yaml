@@ -503,7 +503,7 @@ paths:
 
         The batch is created in `INITIALIZED` status. You can add payouts to the batch
         using `POST /v1/batches/{batch_id}/payouts` and then execute it using
-        `PATCH /v1/batches/{batch_id}` with `status: PROCESSING`.
+        `POST /v1/batches/{batch_id}/execute`.
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -600,26 +600,20 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-    patch:
+  /v1/batches/{batch_id}/execute:
+    post:
       tags:
         - Batches
-      summary: Update batch status (Execute/Cancel)
-      operationId: updateBatchStatus
+      summary: Execute a batch
+      operationId: executeBatch
       description: |
-        Updates the status of a batch to execute or cancel it.
+        Starts processing all payouts in the batch.
 
-        ## Valid Status Transitions
+        The batch must be in `INITIALIZED` status. Once executed, the batch status
+        changes to `PROCESSING` and all payouts will begin processing.
 
-        | Target Status | Allowed When Current Status Is | Description |
-        |---------------|--------------------------------|-------------|
-        | `PROCESSING` | `INITIALIZED` | Start executing the batch. All payouts will begin processing. |
-        | `CANCEL_REQUESTED` | `INITIALIZED` | Cancel before execution. All payouts will be cancelled. |
-        | `CANCEL_REQUESTED` | `PROCESSING` | Cancel during execution. Best effort to cancel remaining payouts. |
-
-        ## Cancellation Behavior
-
-        - If batch processing has **not yet started** (status is `INITIALIZED`): All payouts in the batch will be cancelled.
-        - If batch processing has **already started** (status is `PROCESSING`): Payouts that have already been processed will remain in their current state. We will make a best effort to cancel payouts that have not yet been processed.
+        You will receive `payout.status_updated` webhooks as individual payouts complete,
+        and a `batch.status_updated` webhook when the entire batch completes.
       parameters:
         - name: batch_id
           in: path
@@ -628,30 +622,97 @@ paths:
           schema:
             type: string
         - $ref: '#/components/parameters/IdempotencyKey'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateBatchStatusRequest'
-            example:
-              status: "PROCESSING"
       responses:
         '200':
-          description: Batch status updated successfully
+          description: Batch execution started successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BatchStatusResponse'
+                $ref: '#/components/schemas/Batch'
               example:
                 id: "bat_9921"
+                external_batch_id: "external_batch_123"
                 status: "PROCESSING"
+                total_amount: "50000.00"
+                currency: "USD"
+                metadata:
+                  region: "North_America"
+                created_at: "2024-10-01T12:00:00Z"
         '400':
-          description: Invalid status transition
+          description: Invalid batch status (batch must be INITIALIZED)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                error_type: "invalid_request_error"
+                code: "invalid_batch_status"
+                message: "Batch must be in INITIALIZED status to execute. Current status: PROCESSING."
+        '404':
+          description: Batch not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/batches/{batch_id}/cancel:
+    post:
+      tags:
+        - Batches
+      summary: Cancel a batch
+      operationId: cancelBatch
+      description: |
+        Cancels a batch and its payouts.
+
+        ## Cancellation Behavior
+
+        - **From `INITIALIZED` status:** All payouts in the batch will be cancelled.
+        - **From `PROCESSING` status:** Payouts that have already been processed will
+          remain in their current state. Best effort will be made to cancel payouts
+          that have not yet been processed.
+
+        The batch status changes to `CANCEL_REQUESTED` and eventually to `CANCELLED`
+        once all cancellable payouts have been cancelled.
+      parameters:
+        - name: batch_id
+          in: path
+          required: true
+          description: Unique Remitly identifier for the batch
+          schema:
+            type: string
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Batch cancellation initiated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Batch'
+              example:
+                id: "bat_9921"
+                external_batch_id: "external_batch_123"
+                status: "CANCEL_REQUESTED"
+                total_amount: "50000.00"
+                currency: "USD"
+                metadata:
+                  region: "North_America"
+                created_at: "2024-10-01T12:00:00Z"
+        '400':
+          description: Invalid batch status (batch cannot be cancelled)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error_type: "invalid_request_error"
+                code: "invalid_batch_status"
+                message: "Batch cannot be cancelled. Current status: COMPLETED."
         '404':
           description: Batch not found
           content:
@@ -1505,26 +1566,6 @@ components:
           type: string
           format: date-time
           description: When the batch was created (ISO-8601 UTC)
-
-    UpdateBatchStatusRequest:
-      type: object
-      required:
-        - status
-      properties:
-        status:
-          type: string
-          enum: [PROCESSING, CANCEL_REQUESTED]
-          description: Target status for the batch
-
-    BatchStatusResponse:
-      type: object
-      properties:
-        id:
-          type: string
-          description: Unique Remitly identifier for the batch
-        status:
-          type: string
-          description: New status of the batch
 
     AddPayoutsRequest:
       type: object
