@@ -13,7 +13,6 @@ The current version is `v1`. All endpoints are prefixed with the version (e.g., 
 
 ## Key Features
 
-- **Two-way Authentication**: Secure cryptographic signing using ECDSA P-256 with SHA-256
 - **Payee Onboarding**: Streamlined registration and KYC/KYB compliance
 - **Flexible Payouts**: Support for standalone payouts and batch processing (up to 10,000 items)
 - **Idempotency**: Safe retry mechanism for all state-changing operations

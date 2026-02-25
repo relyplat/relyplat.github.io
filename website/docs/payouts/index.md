@@ -59,27 +59,25 @@ You can retrieve a paginated list of payouts using the `GET /v1/payouts` endpoin
 
 | Parameter | Description |
 |-----------|-------------|
-| `type` | Filter by payout type: `PAYOUT` or `REVERSAL` |
 | `payee_id` | Filter by payee ID |
 | `created_after` | Return payouts created after this timestamp (ISO-8601 UTC) |
 | `created_before` | Return payouts created before this timestamp (ISO-8601 UTC) |
-| `limit` | Maximum number of results (default: 100, max: 1000) |
+| `limit` | Maximum number of results (default: 20, max: 100) |
 | `next_cursor` | Pagination cursor from a previous response |
 
-## Reversals
+## Cancellations
 
-A reversal creates a new payout with a negative amount to reverse a previously successful payout.
+You can request cancellation of a payout using the `POST /v1/payouts/{payout_id}/cancel` endpoint.
 
 ### Key Points
 
-- Only payouts with status `SUCCESSFUL` can be reversed
-- Only standard payouts can be reversed (reversals cannot be reversed)
-- Only one reversal is allowed per payout
-- The reversal amount equals the original payout amount (or available amount if less)
-- Reversals follow the same lifecycle as standard payouts
-- Reversals appear in reports with negative amounts
+- Cancellation requests are processed asynchronously
+- If the payout has not been processed yet, it will be cancelled without any money transfer (`CANCELLED`)
+- If the payout was successful, Remitly will attempt to claw back the funds (`CANCELLED_WITH_CLAWBACK` or `CANCELLATION_FAILED`)
+- Cancellation requests are not accepted for payouts processed more than 120 days ago
+- The `completed_amount` field shows the net amount paid to the payee after any clawbacks
 
-### Reversal Lifecycle
+### Cancellation Lifecycle
 
 ```mermaid
 sequenceDiagram
@@ -87,18 +85,18 @@ sequenceDiagram
     participant Remitly Platform API
     participant Remitly Platform
 
-    Client->>Remitly Platform API: POST /v1/payouts/{payout_id}/reverse
-    Remitly Platform API-->>Client: 201 Created (PENDING)
+    Client->>Remitly Platform API: POST /v1/payouts/{payout_id}/cancel
+    Remitly Platform API-->>Client: 200 OK (CANCELLATION_REQUESTED)
 
-    Remitly Platform->>Remitly Platform: Process reversal
-    Remitly Platform API-->>Client: Webhook: payout.status_updated (SUCCESSFUL)
+    Remitly Platform->>Remitly Platform: Process cancellation
+    Remitly Platform API-->>Client: Webhook: payout.status_updated (CANCELLED / CANCELLED_WITH_CLAWBACK / CANCELLATION_FAILED)
 ```
 
 ## API Endpoints
 
 For detailed API endpoint documentation including request/response schemas, parameters, and examples, see the [API Reference](/api):
 
-- **Payouts**: Create, retrieve, list, and reverse individual payouts
+- **Payouts**: Create, retrieve, list, and cancel individual payouts
 - **Batches**: Create, manage, and execute batch payouts (up to 10,000 payouts per batch)
 - **Reports**: Generate and download settlement reports
 

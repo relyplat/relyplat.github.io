@@ -9,6 +9,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'getting-started/index',
         'getting-started/authentication',
+        'getting-started/environments',
         'getting-started/versioning',
         'getting-started/idempotency',
         'getting-started/rate-limits',

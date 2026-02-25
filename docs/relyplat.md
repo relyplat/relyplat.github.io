@@ -104,6 +104,22 @@ The Remitly Platform API supports idempotency for safely retrying requests witho
 
 Usage is limited to **100 requests per second (RPS)** per account. Exceeding this will result in a 429 Too Many Requests response.
 
+## Environments
+
+Remitly provides separate sandbox and production environments to support your integration journey.
+
+### Sandbox Environment
+
+During onboarding, Remitly will provision a **sandbox environment** for your organization. The sandbox provides:
+
+* **Full API Access**: All APIs are available in sandbox, including Payees, Payouts, Batches, and Settlement Reports
+* **Complete Isolation**: The sandbox is completely isolated from production — no real money movement occurs
+* **Safe Testing**: Test your integration, error handling, and edge cases without any risk
+
+### Credentials
+
+Separate credentials are issued for each environment. Your sandbox and production credentials are independent. Actions in sandbox do not affect production data, and vice versa.
+
 # Payee Registration & Onboarding
 
 ## Payee Lifecycle Overview
@@ -716,8 +732,6 @@ GET /v1/payouts
 
 **Query Parameters**
 
-* **type** `string` — **OPTIONAL**
-  * Filter by payout type: `PAYOUT` or `REVERSAL`.
 * **payee\_id** `string` — **OPTIONAL**
   * Filter by payee ID.
 * **created\_after** `string` — **OPTIONAL**
@@ -725,14 +739,14 @@ GET /v1/payouts
 * **created\_before** `string` — **OPTIONAL**
   * Return payouts created before this timestamp (ISO-8601 UTC).
 * **limit** `integer` — **OPTIONAL**
-  * Maximum number of payouts to return (default 100, max 1000).
+  * Maximum number of payouts to return (default 20, max 100).
 * **next\_cursor** `string` — **OPTIONAL**
   * Pagination cursor from a previous response.
 
 **Example Request**
 
 ```
-GET /v1/payouts?type=REVERSAL&limit=10
+GET /v1/payouts?payee_id=payee123&limit=10
 ```
 
 **Example Response (200 OK)**
@@ -741,33 +755,32 @@ GET /v1/payouts?type=REVERSAL&limit=10
 {
   "payouts": [
     {
-      "id": "pay_rev_12345",
+      "id": "pay_alpha",
+      "external_payout_id": "external_payout_123",
       "payee_id": "payee123",
-      "type": "REVERSAL",
-      "original_payout_id": "pay_alpha",
       "status": "SUCCESSFUL",
-      "amount": "-100.00",
+      "amount": "1200.00",
+      "completed_amount": "1200.00",
       "currency": "USD",
-      "reason": "Customer requested refund",
-      "created_at": "2024-11-01T10:00:00Z"
+      "created_at": "2024-10-01T12:00:00Z"
     }
   ],
-  "next_cursor": "eyJpZCI6InBheV9yZXZfMTIzNDUifQ=="
+  "next_cursor": "eyJpZCI6InBheV9hbHBoYSJ9"
 }
 ```
 
-### 4\. Reverse a payout
+### 4\. Cancel a payout
 
 ```
-POST /v1/payouts/{payout_id}/reverse
+POST /v1/payouts/{payout_id}/cancel
 ```
 
-Reverses a successful payout by creating a new payout with a negative amount.
+Requests cancellation of a payout. The payout status will be set to `CANCELLATION_REQUESTED` and processed asynchronously.
 
 **Path Parameters**
 
 * **payout\_id** `string` — **REQUIRED**
-  * The ID of the payout to reverse.
+  * The ID of the payout to cancel.
 
 **Headers**
 
@@ -776,15 +789,15 @@ Reverses a successful payout by creating a new payout with a negative amount.
 
 **Attributes**
 
-* **reason** `string` — **REQUIRED**
-  * Reason for the reversal (max 500 characters).
+* **reason** `string` — **OPTIONAL**
+  * Reason for the cancellation (max 500 characters).
 
-**Constraints**
+**Behavior**
 
-* Only payouts with status `SUCCESSFUL` can be reversed
-* Only payouts with type `PAYOUT` can be reversed (reversals cannot be reversed)
-* Only one reversal is allowed per payout
-* The reversal amount will be the original payout amount, or the available amount if less
+* If the payout has not been processed yet, it will be cancelled without any money transfer and the status will become `CANCELLED`
+* If the payout was successful, Remitly will attempt to claw back the funds from the payee. The status will become `CANCELLED_WITH_CLAWBACK` (partial or full recovery) or `CANCELLATION_FAILED` (no recovery possible)
+* Cancellation requests are not accepted for payouts processed more than 120 days ago
+* Cancellation requests are not accepted for payouts already in a cancelled state
 
 **Example Request**
 
@@ -794,19 +807,18 @@ Reverses a successful payout by creating a new payout with a negative amount.
 }
 ```
 
-**Example Response (201 Created)**
+**Example Response (200 OK)**
 
 ```json
 {
-  "id": "pay_rev_12345",
+  "id": "pay_alpha",
+  "external_payout_id": "external_payout_123",
   "payee_id": "payee123",
-  "type": "REVERSAL",
-  "original_payout_id": "pay_alpha",
-  "status": "PENDING",
-  "amount": "-100.00",
+  "status": "CANCELLATION_REQUESTED",
+  "amount": "100.00",
   "currency": "USD",
   "reason": "Customer requested refund",
-  "created_at": "2024-11-01T10:00:00Z"
+  "created_at": "2024-10-01T12:00:00Z"
 }
 ```
 
@@ -814,10 +826,13 @@ Reverses a successful payout by creating a new payout with a negative amount.
 
 | Code | Message |
 | :---- | :---- |
-| `cannot_reverse_reversal` | `Reversal payouts cannot be reversed.` |
-| `invalid_payout_status` | `Only payouts with status SUCCESSFUL can be reversed.` |
-| `reversal_already_exists` | `A reversal already exists for this payout.` |
-| `no_reversible_amount` | `No amount available to reverse.` |
+| `invalid_payout_status` | `Payout cannot be cancelled in its current status.` |
+| `already_cancelled` | `This payout has already been cancelled.` |
+| `cancellation_window_expired` | `Cancellation is not allowed for payouts processed more than 120 days ago.` |
+
+**Conflict Response (409)**
+
+If a cancellation is already in progress (different idempotency key), returns 409 Conflict.
 
 ## Batch APIs
 
@@ -1025,8 +1040,8 @@ GET /v1/batches/{batch_id}/payouts
 
 **Query Parameters**
 
-* **limit** `integer` — **OPTIONAL**  
-  * Maximum number of results per page. Default: 100\. Min: 1, Max: 1000\.  
+* **limit** `integer` — **OPTIONAL**
+  * Maximum number of results per page. Default: 20\. Min: 1, Max: 100\.
 * **next\_cursor** `string` — **OPTIONAL**  
   * Cursor for pagination. Use the value from the previous response's `next_cursor` field to retrieve the next page.
 
@@ -1242,14 +1257,13 @@ A Payout represents an individual transfer of funds to a specific recipient.
 | `Attribute` | `Type` | `Description` | `Example` |
 | :---- | :---- | :---- | :---- |
 | `id` | `string` | `Unique Remitly identifier for the payout.` | `pay_99212` |
-| `external_payout_id` | `string` | `The unique identifier you assigned to this payout (not present for reversals).` | `external_payout_123` |
+| `external_payout_id` | `string` | `The unique identifier you assigned to this payout.` | `external_payout_123` |
 | `payee_id` | `string` | `The internal Remitly ID for the recipient.` | `payee123` |
-| `type` | `string` | `Type of payout: PAYOUT (default) or REVERSAL.` | `PAYOUT` |
-| `original_payout_id` | `string` | `For reversals only, the ID of the original payout being reversed.` | `pay_alpha` |
-| `status` | `string` | `Current state: PENDING, VALIDATING, SUBMITTED, SUCCESSFUL, FAILED, CANCELLED.` | `SUCCESSFUL` |
-| `amount` | `string` | `The amount in decimal base currency units. For reversals, this is negative (e.g., "-10.00").` | `1200.00` |
+| `status` | `string` | `Current state: PENDING, VALIDATING, SUBMITTED, SUCCESSFUL, FAILED, CANCELLED, CANCELLATION_REQUESTED, CANCELLED_WITH_CLAWBACK, CANCELLATION_FAILED.` | `SUCCESSFUL` |
+| `amount` | `string` | `The amount in decimal base currency units (e.g., "10.00" = $10.00 USD).` | `1200.00` |
+| `completed_amount` | `string` | `The net amount actually paid to the payee after any clawbacks. Present only for terminal states (SUCCESSFUL, CANCELLED, CANCELLED_WITH_CLAWBACK, CANCELLATION_FAILED).` | `1200.00` |
 | `currency` | `string` | `ISO currency code (currently USD).` | `USD` |
-| `reason` | `string` | `For reversals only, the reason for the reversal (required).` | `Customer requested refund` |
+| `reason` | `string` | `Reason for cancellation (if cancellation was requested).` | `Customer requested refund` |
 | `metadata` | `dictionary` | `Custom key-value pairs for this specific payout.` | `{"bonus_id": "B-99"}` |
 | `error` | `object` | `Contains error details if the payout status is FAILED. Includes code (machine-readable error code) and message (human-readable description).` | `{"code": "invalid_routing", "message": "The routing number provided is invalid."}` |
 | `created_at` | `string` | `Timestamp when the payout was created (ISO-8601 UTC).` | `2024-10-01T12:00:00Z` |
@@ -1290,9 +1304,12 @@ CANCEL_REQUESTED → CANCELLED
 | `PENDING` | `Payout has been created (standalone or in a batch) but processing has not started.` | `No` |
 | `VALIDATING` | `Payout is being validated (recipient details, routing, etc.).` | `No` |
 | `SUBMITTED` | `Payout has been submitted to the payment network.` | `No` |
+| `CANCELLATION_REQUESTED` | `Cancellation requested, processing asynchronously.` | `No` |
 | `SUCCESSFUL` | `Payout has been successfully delivered to the recipient.` | `Yes` |
 | `FAILED` | `Payout failed due to an error (see error field for details).` | `Yes` |
-| `CANCELLED` | `Payout was cancelled before completion (e.g., batch was cancelled).` | `Yes` |
+| `CANCELLED` | `Payout was cancelled before funds were transferred.` | `Yes` |
+| `CANCELLED_WITH_CLAWBACK` | `Payout cancelled after processing, funds clawed back (partial or full).` | `Yes` |
+| `CANCELLATION_FAILED` | `Cancellation attempted but clawback failed (no funds recovered).` | `Yes` |
 
 **Payout State Transitions:**
 
@@ -1302,6 +1319,8 @@ PENDING → CANCELLED (batch cancelled before execution)
 VALIDATING → SUBMITTED | FAILED
 VALIDATING → CANCELLED (batch cancelled during validation)
 SUBMITTED → SUCCESSFUL | FAILED
+Any state → CANCELLATION_REQUESTED (cancel payout requested)
+CANCELLATION_REQUESTED → CANCELLED | CANCELLED_WITH_CLAWBACK | CANCELLATION_FAILED
 ```
 
 ### Metadata
@@ -1349,8 +1368,7 @@ Metadata is useful for storing custom reference IDs, tags, or any additional con
 | `invalid_routing` | `The recipient's routing number is invalid.` |
 | `invalid_account` | `The recipient's account number is invalid.` |
 | `recipient_rejected` | `The recipient's bank rejected the transfer.` |
-| `cannot_reverse_reversal` | `Reversal payouts cannot be reversed.` |
-| `invalid_payout_status` | `Only payouts with status SUCCESSFUL can be reversed.` |
-| `reversal_already_exists` | `A reversal already exists for this payout.` |
-| `no_reversible_amount` | `No amount available to reverse.` |
+| `invalid_payout_status` | `Payout cannot be cancelled in its current status.` |
+| `already_cancelled` | `This payout has already been cancelled.` |
+| `cancellation_window_expired` | `Cancellation is not allowed for payouts processed more than 120 days ago.` |
 | `internal_error` | `An unexpected error occurred. Contact support if this persists.` |

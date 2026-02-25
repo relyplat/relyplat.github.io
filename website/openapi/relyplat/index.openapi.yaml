@@ -215,13 +215,6 @@ paths:
 
         Use cursor-based pagination with `limit` and `next_cursor` parameters.
       parameters:
-        - name: type
-          in: query
-          required: false
-          description: Filter by payout type
-          schema:
-            type: string
-            enum: [PAYOUT, REVERSAL]
         - name: payee_id
           in: query
           required: false
@@ -245,11 +238,11 @@ paths:
         - name: limit
           in: query
           required: false
-          description: Maximum number of payouts to return (default 100, max 1000)
+          description: Maximum number of payouts to return (default 20, max 100)
           schema:
             type: integer
-            default: 100
-            maximum: 1000
+            default: 20
+            maximum: 100
         - name: next_cursor
           in: query
           required: false
@@ -398,93 +391,98 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /v1/payouts/{payout_id}/reverse:
+  /v1/payouts/{payout_id}/cancel:
     post:
       tags:
         - Payouts
-      summary: Reverse a payout
-      operationId: reversePayout
+      summary: Cancel a payout
+      operationId: cancelPayout
       description: |
-        Reverses a successful payout. This creates a new payout with a negative amount
-        representing the reversal.
+        Requests cancellation of a payout. The payout status will be set to `CANCELLATION_REQUESTED`
+        and processed asynchronously.
 
-        - Only payouts with status `SUCCESSFUL` can be reversed
-        - Only payouts with type `PAYOUT` can be reversed (reversals cannot be reversed)
-        - Only one reversal is allowed per payout
-        - The reversal amount will be the original payout amount, or the available amount if less
+        - If the payout has not been processed yet, it will be cancelled without any money transfer
+          and the status will become `CANCELLED`
+        - If the payout was successful, Remitly will attempt to claw back the funds from the payee.
+          The status will become `CANCELLED_WITH_CLAWBACK` (partial or full recovery) or
+          `CANCELLATION_FAILED` (no recovery possible)
+        - Cancellation requests are not accepted for payouts processed more than 120 days ago
+        - Cancellation requests are not accepted for payouts already in a cancelled state
 
-        The reversal payout follows the same lifecycle as a standard payout and you will
-        receive `payout.status_updated` webhooks for status changes.
+        You will receive `payout.status_updated` webhooks for status changes.
       parameters:
         - name: payout_id
           in: path
           required: true
-          description: Unique Remitly identifier for the payout to reverse
+          description: Unique Remitly identifier for the payout to cancel
           schema:
             type: string
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ReversalRequest'
+              $ref: '#/components/schemas/CancelPayoutRequest'
             example:
               reason: "Customer requested refund"
       responses:
-        '201':
-          description: Reversal created successfully
+        '200':
+          description: Cancellation requested successfully
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Payout'
               example:
-                id: "pay_rev_12345"
+                id: "pay_alpha"
+                external_payout_id: "external_payout_123"
                 payee_id: "payee123"
-                type: "REVERSAL"
-                original_payout_id: "pay_alpha"
-                status: "PENDING"
-                amount: "-100.00"
+                status: "CANCELLATION_REQUESTED"
+                amount: "100.00"
                 currency: "USD"
                 reason: "Customer requested refund"
-                created_at: "2024-11-01T10:00:00Z"
+                created_at: "2024-10-01T12:00:00Z"
         '400':
-          description: Invalid request (payout not reversible)
+          description: Invalid request (payout cannot be cancelled)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
               examples:
-                cannot_reverse_reversal:
-                  summary: Cannot reverse a reversal
-                  value:
-                    error_type: "invalid_request_error"
-                    code: "cannot_reverse_reversal"
-                    message: "Reversal payouts cannot be reversed."
                 invalid_payout_status:
                   summary: Invalid payout status
                   value:
                     error_type: "invalid_request_error"
                     code: "invalid_payout_status"
-                    message: "Only payouts with status SUCCESSFUL can be reversed. Current status: PENDING."
-                reversal_already_exists:
-                  summary: Reversal already exists
+                    message: "Payout cannot be cancelled in its current status."
+                already_cancelled:
+                  summary: Already cancelled
                   value:
                     error_type: "invalid_request_error"
-                    code: "reversal_already_exists"
-                    message: "A reversal already exists for this payout."
-                no_reversible_amount:
-                  summary: No amount to reverse
+                    code: "already_cancelled"
+                    message: "This payout has already been cancelled."
+                cancellation_window_expired:
+                  summary: Cancellation window expired
                   value:
                     error_type: "invalid_request_error"
-                    code: "no_reversible_amount"
-                    message: "No amount available to reverse."
+                    code: "cancellation_window_expired"
+                    message: "Cancellation is not allowed for payouts processed more than 120 days ago."
         '404':
           description: Payout not found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict (cancellation already in progress)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error_type: "conflict_error"
+                code: "cancellation_in_progress"
+                message: "A cancellation request is already in progress for this payout."
         '401':
           description: Authentication failed
           content:
@@ -823,11 +821,11 @@ paths:
         - name: limit
           in: query
           required: false
-          description: Maximum number of payouts to return (default 100, max 1000)
+          description: Maximum number of payouts to return (default 20, max 100)
           schema:
             type: integer
-            default: 100
-            maximum: 1000
+            default: 20
+            maximum: 100
         - name: next_cursor
           in: query
           required: false
@@ -1044,7 +1042,7 @@ x-webhooks:
       description: |
         Fired when a payout's status changes (e.g., from `PENDING` to `SUCCESSFUL` or `FAILED`).
 
-        This webhook is sent for both standalone payouts, batch payouts, and reversals.
+        This webhook is sent for both standalone payouts and batch payouts, including cancellation status changes.
       requestBody:
         required: true
         content:
@@ -1052,8 +1050,8 @@ x-webhooks:
             schema:
               $ref: '#/components/schemas/PayoutStatusUpdatedEvent'
             examples:
-              standard_payout:
-                summary: Standard payout
+              successful:
+                summary: Payout successful
                 value:
                   id: "evt_201"
                   type: "payout.status_updated"
@@ -1064,22 +1062,35 @@ x-webhooks:
                     payee_id: "payee123"
                     status: "SUCCESSFUL"
                     amount: "1200.00"
+                    completed_amount: "1200.00"
                     currency: "USD"
-                    type: "PAYOUT"
-              reversal:
-                summary: Reversal payout
+              cancellation_requested:
+                summary: Cancellation requested
                 value:
-                  id: "evt_501"
+                  id: "evt_301"
                   type: "payout.status_updated"
-                  timestamp: "2024-11-01T10:05:00Z"
+                  timestamp: "2024-10-01T14:00:00Z"
                   data:
-                    payout_id: "pay_rev_12345"
+                    payout_id: "pay_alpha"
+                    external_payout_id: "external_payout_123"
                     payee_id: "payee123"
-                    status: "SUCCESSFUL"
-                    amount: "-100.00"
+                    status: "CANCELLATION_REQUESTED"
+                    amount: "1200.00"
                     currency: "USD"
-                    type: "REVERSAL"
-                    original_payout_id: "pay_alpha"
+              cancelled_with_clawback:
+                summary: Cancelled with clawback (partial recovery)
+                value:
+                  id: "evt_401"
+                  type: "payout.status_updated"
+                  timestamp: "2024-10-01T15:00:00Z"
+                  data:
+                    payout_id: "pay_alpha"
+                    external_payout_id: "external_payout_123"
+                    payee_id: "payee123"
+                    status: "CANCELLED_WITH_CLAWBACK"
+                    amount: "1200.00"
+                    completed_amount: "200.00"
+                    currency: "USD"
       responses:
         '200':
           description: Webhook received successfully
@@ -1454,36 +1465,42 @@ components:
           description: Unique Remitly identifier for the payout
         external_payout_id:
           type: string
-          description: Your unique identifier for this payout (not present for reversals)
+          description: Your unique identifier for this payout
         payee_id:
           type: string
           description: Remitly payee ID of the recipient
-        type:
-          type: string
-          enum: [PAYOUT, REVERSAL]
-          default: PAYOUT
-          description: |
-            Type of payout:
-            - `PAYOUT`: Standard payout (default)
-            - `REVERSAL`: A reversal of a previous payout
-        original_payout_id:
-          type: string
-          description: For reversals only, the ID of the original payout being reversed
         status:
           type: string
-          enum: [PENDING, VALIDATING, SUBMITTED, SUCCESSFUL, FAILED, CANCELLED]
-          description: Current status of the payout
+          enum: [PENDING, VALIDATING, SUBMITTED, SUCCESSFUL, FAILED, CANCELLED, CANCELLATION_REQUESTED, CANCELLED_WITH_CLAWBACK, CANCELLATION_FAILED]
+          description: |
+            Current status of the payout:
+            - `PENDING`: Payout created, awaiting processing
+            - `VALIDATING`: Payout is being validated
+            - `SUBMITTED`: Payout submitted to payment network
+            - `SUCCESSFUL`: Payout completed successfully
+            - `FAILED`: Payout failed
+            - `CANCELLED`: Payout cancelled before funds were transferred
+            - `CANCELLATION_REQUESTED`: Cancellation requested, processing asynchronously
+            - `CANCELLED_WITH_CLAWBACK`: Payout cancelled after processing, funds clawed back (partial or full)
+            - `CANCELLATION_FAILED`: Cancellation attempted but clawback failed (no funds recovered)
         amount:
           type: string
+          description: Amount in decimal base currency units (e.g., "10.00" = $10.00 USD)
+        completed_amount:
+          type: string
           description: |
-            Amount in decimal base currency units (e.g., "10.00" = $10.00 USD).
-            For reversals, this is a negative value (e.g., "-10.00").
+            The net amount actually paid to the payee after any clawbacks.
+            Present only for payouts in terminal states (SUCCESSFUL, CANCELLED, CANCELLED_WITH_CLAWBACK, CANCELLATION_FAILED).
+            For SUCCESSFUL payouts, this equals the amount.
+            For CANCELLED payouts, this is "0.00".
+            For CANCELLED_WITH_CLAWBACK, this is the amount minus the clawed back amount.
+            For CANCELLATION_FAILED, this equals the amount (no recovery).
         currency:
           type: string
           description: ISO currency code
         reason:
           type: string
-          description: For reversals only, the reason for the reversal (required)
+          description: Reason for cancellation (if cancellation was requested)
         metadata:
           $ref: '#/components/schemas/Metadata'
         error:
@@ -1493,15 +1510,13 @@ components:
           format: date-time
           description: When the payout was created (ISO-8601 UTC)
 
-    ReversalRequest:
+    CancelPayoutRequest:
       type: object
-      required:
-        - reason
       properties:
         reason:
           type: string
           maxLength: 500
-          description: Reason for the reversal
+          description: Reason for the cancellation (optional)
 
     PayoutError:
       type: object
@@ -1721,22 +1736,18 @@ components:
               type: string
             external_payout_id:
               type: string
-              description: Not present for reversals
             payee_id:
               type: string
             status:
               type: string
+              description: Current status of the payout
             amount:
               type: string
+            completed_amount:
+              type: string
+              description: Net amount paid to payee (present for terminal states)
             currency:
               type: string
-            type:
-              type: string
-              enum: [PAYOUT, REVERSAL]
-              description: Type of payout
-            original_payout_id:
-              type: string
-              description: For reversals only, the ID of the original payout being reversed
 
     BatchStatusUpdatedEvent:
       type: object
