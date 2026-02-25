@@ -74,7 +74,7 @@ You can request cancellation of a payout using the `POST /v1/payouts/{payout_id}
 - Cancellation requests are processed asynchronously
 - If the payout has not been processed yet, it will be cancelled without any money transfer (`CANCELLED`)
 - If the payout was successful, Remitly will attempt to claw back the funds (`CANCELLED_WITH_CLAWBACK` or `CANCELLATION_FAILED`)
-- Cancellation requests are not accepted for payouts processed more than 120 days ago
+- Cancellation requests are not accepted for payouts processed more than 30 days ago
 - The `completed_amount` field shows the net amount paid to the payee after any clawbacks
 
 ### Cancellation Lifecycle
