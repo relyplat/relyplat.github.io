@@ -35,6 +35,10 @@ Fired when an individual payout changes state (e.g., `PENDING` → `SUCCESSFUL`,
 
 Fired when a batch changes state (e.g., `INITIALIZED` → `PROCESSING`, `PROCESSING` → `COMPLETED`).
 
+### report.status_updated
+
+Fired when a report's status changes to a terminal state (`COMPLETED` or `FAILED`). When successful, the payload includes a `download_url` for retrieving the report.
+
 ## Webhook Payload Schema
 
 For detailed webhook payload schemas and examples, see the [API Reference](/api#tag/Webhooks).

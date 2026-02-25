@@ -1132,6 +1132,49 @@ Fired when the batch changes state.
 }
 ```
 
+### report.status\_updated
+
+Fired when a report's status changes to a terminal state (`COMPLETED` or `FAILED`).
+
+**Example Payload (Success)**
+
+```json
+{
+  "id": "evt_401",
+  "type": "report.status_updated",
+  "timestamp": "2024-11-01T10:05:00Z",
+  "data": {
+    "report_id": "rpt_55291",
+    "type": "settlement",
+    "status": "COMPLETED",
+    "start_date": "2024-10-01",
+    "end_date": "2024-10-31",
+    "download_url": "https://storage.remitly.com/reports/rpt_55291.csv?signature=..."
+  }
+}
+```
+
+**Example Payload (Failure)**
+
+```json
+{
+  "id": "evt_402",
+  "type": "report.status_updated",
+  "timestamp": "2024-11-01T10:05:00Z",
+  "data": {
+    "report_id": "rpt_55292",
+    "type": "settlement",
+    "status": "FAILED",
+    "start_date": "2024-10-01",
+    "end_date": "2024-10-31",
+    "error": {
+      "code": "report_generation_failed",
+      "message": "Unable to generate report for the specified date range."
+    }
+  }
+}
+```
+
 ## Reference
 
 ### Entities

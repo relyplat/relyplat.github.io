@@ -856,6 +856,38 @@ x-webhooks:
         '200':
           description: Webhook received successfully
 
+  reportStatusUpdated:
+    post:
+      tags:
+        - Webhooks
+      summary: report.status_updated
+      operationId: webhookReportStatusUpdated
+      description: |
+        Fired when a report's status changes to a terminal state (`COMPLETED` or `FAILED`).
+
+        - When `status` is `COMPLETED`, the `download_url` field contains a pre-signed URL to download the report
+        - When `status` is `FAILED`, the `error` field contains details about the failure
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportStatusUpdatedEvent'
+            example:
+              id: "evt_401"
+              type: "report.status_updated"
+              timestamp: "2024-11-01T10:05:00Z"
+              data:
+                report_id: "rpt_55291"
+                type: "settlement"
+                status: "COMPLETED"
+                start_date: "2024-10-01"
+                end_date: "2024-10-31"
+                download_url: "https://storage.remitly.com/reports/rpt_55291.csv?signature=..."
+      responses:
+        '200':
+          description: Webhook received successfully
+
 components:
   parameters:
     IdempotencyKey:
@@ -1474,6 +1506,54 @@ components:
               type: string
             total_completed_amount:
               type: string
+
+    ReportStatusUpdatedEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique event identifier
+        type:
+          type: string
+          enum: [report.status_updated]
+        timestamp:
+          type: string
+          format: date-time
+        data:
+          type: object
+          properties:
+            report_id:
+              type: string
+              description: Unique identifier for the report
+            type:
+              type: string
+              description: Type of report (e.g., "settlement")
+            status:
+              type: string
+              enum: [COMPLETED, FAILED]
+              description: Terminal status of the report
+            start_date:
+              type: string
+              format: date
+              description: Report period start date
+            end_date:
+              type: string
+              format: date
+              description: Report period end date
+            download_url:
+              type: string
+              format: uri
+              description: Pre-signed URL to download the report (only present when status is COMPLETED)
+            error:
+              type: object
+              description: Error details (only present when status is FAILED)
+              properties:
+                code:
+                  type: string
+                  description: Machine-readable error code
+                message:
+                  type: string
+                  description: Human-readable error description
 
     # Common Schemas
     Error:
