@@ -5,7 +5,17 @@ title: Rate Limits
 
 # Rate Limits
 
-Usage is limited to **100 requests per second (RPS)** per account. Exceeding this will result in a `429 Too Many Requests` response.
+API usage is rate-limited per account. Exceeding these limits will result in a `429 Too Many Requests` response.
+
+## Rate Limits by Category
+
+| Category | Description | Rate Limit |
+|:---------|:------------|:-----------|
+| **GET by ID** | Retrieve a single resource | 5,000 RPM |
+| **GET with pagination** | List or search resources | 500 RPM |
+| **POST (standard)** | Create or cancel operations | 200 RPM |
+| **POST (controlled)** | Registration sessions, batch execution | 100 RPM |
+| **POST (resource-intensive)** | Bulk operations, report generation | 50 RPM |
 
 ## Best Practices
 
