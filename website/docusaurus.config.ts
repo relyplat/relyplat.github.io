@@ -9,6 +9,7 @@ const config: Config = {
   title: 'Remitly Platform API',
   tagline: "Here you'll find guides, resources, and references to build with Remitly Platform.",
   favicon: 'img/favicon.ico',
+  noIndex: true,
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
   future: {
