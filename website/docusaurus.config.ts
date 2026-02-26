@@ -81,6 +81,7 @@ const config: Config = {
       logo: {
         alt: 'Remitly Platform Logo',
         src: 'img/icon.png',
+        srcDark: 'img/icon_dark.png',
       },
       items: [
         {
